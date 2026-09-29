@@ -156,8 +156,8 @@ class MenuBarView private constructor() : OverlayView() {
             // SettingsActivity live 상태 flow
             val settingsActivityLiveState by SettingsActivity.liveStateFlow.collectAsStateWithLifecycle()
 
-            // 광고 게이트 live 상태 flow (광고 표시 중에는 메뉴바를 숨긴다)
-            val adGateLiveState by AdGateActivity.liveStateFlow.collectAsStateWithLifecycle()
+            // 광고 게이트·광고 화면이 오버레이를 가리는 동안에는 메뉴바를 숨긴다
+            val adGateCovering by AdGateActivity.coveringFlow.collectAsStateWithLifecycle()
 
             // Drag handle dock state
             val dragHandleDockState by targetHandleViewModel.dockStateFlow.collectAsStateWithLifecycle()
@@ -176,7 +176,7 @@ class MenuBarView private constructor() : OverlayView() {
                 captureStatus,
                 targetHandleMotionEventState,
                 settingsActivityLiveState,
-                adGateLiveState,
+                adGateCovering,
                 dragHandleDockState,
                 textDetectMode,
                 fixedAreaViewState
@@ -184,7 +184,7 @@ class MenuBarView private constructor() : OverlayView() {
 
                 view?.let {
                     val menuVisible = when {
-                        adGateLiveState -> false // 광고 게이트/광고 표시 중에는 숨김
+                        adGateCovering -> false // 광고 게이트/광고 표시 중에는 숨김
                         settingsActivityLiveState -> true
                         captureStatus != CaptureStatus.Requested
                                 && targetHandleMotionEventState != MotionEvent.ACTION_MOVE

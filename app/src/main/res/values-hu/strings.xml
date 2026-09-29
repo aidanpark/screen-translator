@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Hozzon létre egy API-kulcsot az Anthropic Console-ban. A használatot az Anthropic-fiókján számlázzuk.</string>
     <string name="settings_menu_how_to_use">Használati útmutató</string>
     <string name="settings_menu_privacy_policy">Adatvédelmi irányelvek</string>
-    <string name="source_language_no_screen_reader">A képernyőn lévő szöveg felismerése nem támogatott</string>
     <string name="ocr_model_preparing">A fordítómotor előkészítése folyamatban. Kérjük, várjon egy pillanatot.</string>
     <string name="error_translate_invalid_key">Az API-kulcs érvénytelen. Ellenőrizze a beállításokban.</string>
     <string name="error_translate_no_credit">Nincs több kredit a fiókban. Töltse fel a szolgáltató konzoljában.</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">Képregény</string>
     <string name="translation_domain_tech">Műszaki</string>
     <string name="translation_domain_business">Üzleti</string>
+  <string name="api_key_clear">Törlés</string>
 </resources>
 
 

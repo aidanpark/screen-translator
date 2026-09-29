@@ -16,6 +16,12 @@ interface VisionKit {
     val name: String
 
     /**
+     * 검출기가 줄을 직접 주는가(PP-OCRv5). 그런 엔진의 화면은 줄 상자로 문단을 묶고 검출기 기준값으로 조립한다 — 줄이 이미 다 읽혔어도
+     * 같다(auto 표본이 작은 화면의 줄을 모두 읽은 경우). ML Kit 은 단어를 주고 앱이 줄을 다시 유도한다.
+     */
+    val linesFromDetector: Boolean get() = false
+
+    /**
      * [screen] 전체에서 글 줄을 찾는다. 읽지 않은 줄은 `words == null` 로 준다 — 검출이 싼 엔진은 줄 위치만 주고
      * 읽기는 [recognize] 로 미룬다. 검출과 읽기를 나눌 수 없는 엔진(ML Kit)은 여기서 다 읽는다.
      */

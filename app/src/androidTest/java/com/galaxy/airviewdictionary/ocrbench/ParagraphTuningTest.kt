@@ -3,6 +3,7 @@ package com.galaxy.airviewdictionary.ocrbench
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.test.platform.app.InstrumentationRegistry
+import com.galaxy.airviewdictionary.data.local.vision.AssemblyParams
 import com.galaxy.airviewdictionary.data.local.vision.VisionRepository
 import com.galaxy.airviewdictionary.data.local.vision.WritingDirection
 import com.galaxy.airviewdictionary.data.local.vision.model.Line
@@ -46,9 +47,9 @@ class ParagraphTuningTest {
     }
 
     /** 본문 줄들이 한 문단에 몇 개나 함께 묶였는지. */
-    private fun bodyLinesGrouped(repository: VisionRepository, lines: List<Line>): Pair<Int, Int> {
+    private fun bodyLinesGrouped(repository: VisionRepository, lines: List<Line>, params: AssemblyParams): Pair<Int, Int> {
         val bodyLines = lines.filter { it.boundingBox.centerY() in bodyRange }
-        val paragraphs = repository.groupLinesIntoParagraphs(lines, WritingDirection.RTL)
+        val paragraphs = repository.groupLinesIntoParagraphs(lines, WritingDirection.RTL, params)
         val best = paragraphs.maxOfOrNull { p ->
             p.lines.count { it.boundingBox.centerY() in bodyRange }
         } ?: 0
@@ -62,14 +63,14 @@ class ParagraphTuningTest {
     @Test
     fun inkTightenedBoxesWithOriginalConstants() {
         val repository = VisionRepository()
-        repository.setReferenceConstantValue(false, "ar", linesFromDetector = true)
+        val params = AssemblyParams.reference(false, "ar", linesFromDetector = true)
         val canvas = Bitmap.createBitmap(1440, 3120, Bitmap.Config.ARGB_8888)
 
         for (asset in listOf("words_ar.json", "words_ar_ink.json", "words_ar_med.json")) {
             val lines = detectorLines(asset)
             val heights = lines.filter { it.boundingBox.centerY() in bodyRange }
                 .map { it.boundingBox.height() }.sorted()
-            val (got, total) = bodyLinesGrouped(repository, lines)
+            val (got, total) = bodyLinesGrouped(repository, lines, params)
             log("$asset → $got/$total  본문 줄높이 $heights")
         }
     }
@@ -78,19 +79,15 @@ class ParagraphTuningTest {
     fun tuneParagraphConstants() {
         val lines = detectorLines()
         val repository = VisionRepository()
-        repository.setReferenceConstantValue(false, "ar", linesFromDetector = true)
+        val params = AssemblyParams.reference(false, "ar", linesFromDetector = true)
         val canvas = Bitmap.createBitmap(1440, 3120, Bitmap.Config.ARGB_8888)
 
-        fun reset() = repository.setReferenceConstantValue(false, "ar", linesFromDetector = true)
-
-        reset()
-        val (base, total) = bodyLinesGrouped(repository, lines)
+        val (base, total) = bodyLinesGrouped(repository, lines, params)
         log("기준값: 본문 $total 줄 중 $base 줄이 한 문단")
 
         // 어느 줄이 어느 문단으로 갔는지 본다. 문턱값을 다 풀어도 안 바뀌었으니
         // 문턱이 아니라 다른 곳에서 갈린다.
-        reset()
-        val paragraphs = repository.groupLinesIntoParagraphs(lines, WritingDirection.RTL)
+        val paragraphs = repository.groupLinesIntoParagraphs(lines, WritingDirection.RTL, params)
         lines.filter { it.boundingBox.centerY() in bodyRange }
             .sortedBy { it.boundingBox.top }
             .forEach { line ->
@@ -106,10 +103,8 @@ class ParagraphTuningTest {
         // 두 조건이 직렬이라 함께 풀어야 통과한다. 하나씩 바꾸면 앞의 조건에서 막혀 변화가 없다.
         for (fh in listOf(0.68, 0.60, 0.55, 0.50, 0.40)) {
             for (af in listOf(0.62, 0.55, 0.50, 0.40, 0.30)) {
-                reset()
-                repository.LINE_FONT_HEIGHT_SIMILARITY_MINIMUM_RATIO = fh
-                repository.LINE_FONT_HEIGHT_SPACING_AFFINITY_LIMIT = af
-                val got = bodyLinesGrouped(repository, lines).first
+                val tuned = params.copy(LINE_FONT_HEIGHT_SIMILARITY_MINIMUM_RATIO = fh, LINE_FONT_HEIGHT_SPACING_AFFINITY_LIMIT = af)
+                val got = bodyLinesGrouped(repository, lines, tuned).first
                 if (got > 7) log("폰트높이유사 $fh + affinity $af → $got/$total")
             }
         }

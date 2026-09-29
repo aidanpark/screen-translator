@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">ສ້າງກະແຈ API ໃນ Anthropic Console. ການນຳໃຊ້ຈະຖືກເກັບເງິນໃສ່ບັນຊີ Anthropic ຂອງທ່ານ.</string>
   <string name="settings_menu_how_to_use">ວິທີໃຊ້</string>
   <string name="settings_menu_privacy_policy">ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ</string>
-  <string name="source_language_no_screen_reader">ບໍ່ຮອງຮັບການຈົດຈຳຂໍ້ຄວາມເທິງໜ້າຈໍ</string>
   <string name="ocr_model_preparing">ກຳລັງກຽມເຄື່ອງມືແປພາສາ. ກະລຸນາລໍຖ້າຈັກໜ້ອຍ.</string>
   <string name="error_translate_invalid_key">ກະແຈ API ບໍ່ຖືກຕ້ອງ. ກວດເບິ່ງໃນການຕັ້ງຄ່າ.</string>
   <string name="error_translate_no_credit">ບໍ່ມີເຄຣດິດໃນບັນຊີ. ເຕີມໃນຄອນໂຊຜູ້ໃຫ້ບໍລິການ.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">ກາຕູນ</string>
     <string name="translation_domain_tech">ເຕັກນິກ</string>
     <string name="translation_domain_business">ທຸລະກິດ</string>
+  <string name="api_key_clear">ລ້າງ</string>
 </resources>

@@ -3,6 +3,7 @@ package com.galaxy.airviewdictionary.ui.screen.overlay.fixedarea
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.graphics.Point
 import android.graphics.Rect
@@ -43,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.galaxy.airviewdictionary.R
 import com.galaxy.airviewdictionary.core.OverlayService
 import com.galaxy.airviewdictionary.data.local.capture.CapturePreventedException
+import com.galaxy.airviewdictionary.data.local.capture.ImageCrop
 import com.galaxy.airviewdictionary.data.local.capture.CaptureResponse
 import com.galaxy.airviewdictionary.data.local.capture.NoMediaProjectionTokenException
 import com.galaxy.airviewdictionary.data.local.preference.PreferenceRepository
@@ -52,6 +54,8 @@ import com.galaxy.airviewdictionary.data.local.ads.AdGateState
 import com.galaxy.airviewdictionary.data.local.vision.TextDetectMode
 import com.galaxy.airviewdictionary.data.local.vision.model.Transaction
 import com.galaxy.airviewdictionary.data.local.vision.model.VisionResponse
+import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
+import com.galaxy.airviewdictionary.data.remote.translation.NoTextInImageException
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationErrorMessages
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationResponse
@@ -67,11 +71,14 @@ import com.galaxy.airviewdictionary.ui.screen.overlay.targethandle.TargetHandleV
 import com.galaxy.airviewdictionary.ui.screen.overlay.targethandle.TargetHandleViewModel
 import com.galaxy.airviewdictionary.ui.screen.overlay.targethandle.TranslationSourceLanguage
 import com.galaxy.airviewdictionary.ui.screen.permissions.ScreenCapturePermissionRequesterActivity
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Singleton
 
@@ -508,9 +515,15 @@ open class FixedAreaView : OverlayView() {
         // Test 캡처 이미지 확인
 
         val sourceLanguageCode: String = targetHandleViewModel.preferenceRepository.sourceLanguageCodeFlow.first()
+        val translationKitType: TranslationKitType = targetHandleViewModel.preferenceRepository.translationKitTypeFlow.first()
+        if (targetHandleViewModel.translationRepository.usesImageTranslation(translationKitType, sourceLanguageCode)) {
+            requestImageTranslate(context, captureResponse.bitmap, selectedAreaBitmap, selectedArea, sourceLanguageCode)
+            return
+        }
         val visionResponse: VisionResponse = targetHandleViewModel.visionRepository.request(
             bitmap = selectedAreaBitmap,
-            sourceLanguageCode = sourceLanguageCode,
+            // 읽을 엔진이 없는 언어인데 이미지 번역을 못 하면(원격 스위치를 껐다) auto 로 읽는다
+            sourceLanguageCode = if (ImageTranslation.isImageOnlyLanguage(sourceLanguageCode)) "auto" else sourceLanguageCode,
             // 영역 안의 글 전체가 필요하다 — 검출만 하고 멈추지 않는다.
             readAll = true,
         )
@@ -527,6 +540,79 @@ open class FixedAreaView : OverlayView() {
         detectedString = visionResponseString
         Timber.tag(TAG).d("[detectedString] $detectedString")
         requestTranslate(context, visionResponse.result, visionResponseString)
+    }
+
+    /**
+     * AI 이미지 번역(§25) — 글이 바뀌었을 때만 영역 이미지를 보낸다(주기마다 보내면 비용이 폭증한다). 바뀜은 읽을 수 있는 화면(auto)이면
+     * 지금처럼 OCR 글로, 읽을 엔진이 없는 언어면 PP-OCRv5 지문으로 본다 — 지문은 뜻 없는 글이라 조금 달라도 같은 글로 본다.
+     */
+    private suspend fun requestImageTranslate(
+        context: Context,
+        screen: Bitmap,
+        selectedAreaBitmap: Bitmap,
+        selectedArea: Rect,
+        sourceLanguageCode: String,
+    ) {
+        val imageOnlyLanguage = ImageTranslation.isImageOnlyLanguage(sourceLanguageCode)
+        val fingerprint = try {
+            if (imageOnlyLanguage) {
+                targetHandleViewModel.visionRepository.imageFingerprint(selectedAreaBitmap)
+            } else {
+                val visionResponse = targetHandleViewModel.visionRepository.request(selectedAreaBitmap, sourceLanguageCode, readAll = true)
+                if (visionResponse !is VisionResponse.Success) return
+                visionResponse.result.ocr.text
+            }.replace("\n", " ")
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "image fingerprint 실패")
+            return
+        }
+        val previous = detectedString
+        if (previous != null && (previous == fingerprint || imageOnlyLanguage && ImageTranslation.sameFingerprint(previous, fingerprint))) return
+        detectedString = fingerprint
+        if (fingerprint.isBlank()) {
+            translationFlow.value = ""
+            return
+        }
+
+        val sourceLanguagePref: String = targetHandleViewModel.preferenceRepository.sourceLanguageCodeFlow.first()
+        val targetLanguageCode: String = targetHandleViewModel.preferenceRepository.targetLanguageCodeFlow.first()
+        val crop = withContext(Dispatchers.Default) { ImageCrop.area(screen, selectedArea) } ?: return
+        val response = try {
+            targetHandleViewModel.translationRepository.requestImage(sourceLanguageCode, targetLanguageCode, crop, TextDetectMode.FIXED_AREA)
+        } finally {
+            crop.recycle()
+        }
+        when (response) {
+            is TranslationResponse.Success -> {
+                val transaction = com.galaxy.airviewdictionary.data.remote.translation.Transaction(
+                    requestedSourceLanguageCode = sourceLanguagePref,
+                    resolvedSourceLanguageCode = TranslationSourceLanguage.resolved(response.result.resolvedSourceLanguageCode, sourceLanguageCode),
+                    targetLanguageCode = response.result.targetLanguageCode,
+                    sourceText = response.result.sourceText,
+                    translationKitType = response.result.translationKitType,
+                    resultText = response.result.resultText,
+                    modelName = response.result.modelName,
+                )
+                translationFlow.value = response.result.resultText ?: ""
+                transaction.resolvedSourceLanguageCode?.let {
+                    targetHandleViewModel.preferenceRepository.update(PreferenceRepository.LAST_USED_SOURCE_LANGUAGE_CODE, it)
+                }
+                targetHandleViewModel.increaseTrialCount()
+                targetHandleViewModel.analyticsRepository.translationReport(
+                    transaction = transaction,
+                    textDetectMode = TextDetectMode.FIXED_AREA,
+                )
+            }
+
+            is TranslationResponse.Error -> {
+                Timber.tag(TAG).d("Response Error ${response.t}")
+                // 영역에 글이 없다는 답이면 결과창을 비운다
+                translationFlow.value =
+                    if (response.t is NoTextInImageException) "" else "⚠ " + TranslationErrorMessages.resolve(context, response.t)
+            }
+        }
     }
 
     private suspend fun requestTranslate(context: Context, visionResult: Transaction, sourceText: String) {

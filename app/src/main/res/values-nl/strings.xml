@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Maak een API-sleutel in de Anthropic Console. Gebruik wordt in rekening gebracht op je Anthropic-account.</string>
     <string name="settings_menu_how_to_use">Gebruiksaanwijzing</string>
     <string name="settings_menu_privacy_policy">Privacybeleid</string>
-    <string name="source_language_no_screen_reader">Herkenning van schermtekst wordt niet ondersteund</string>
     <string name="ocr_model_preparing">De vertaalmachine wordt voorbereid. Even geduld alstublieft.</string>
     <string name="error_translate_invalid_key">De API-sleutel is ongeldig. Controleer deze in Instellingen.</string>
     <string name="error_translate_no_credit">Geen tegoed meer op je account. Waardeer op in de console van de aanbieder.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Strip</string>
     <string name="translation_domain_tech">Technisch</string>
     <string name="translation_domain_business">Zakelijk</string>
+  <string name="api_key_clear">Wissen</string>
 </resources>

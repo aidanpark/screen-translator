@@ -98,7 +98,6 @@
   <string name="claude_key_signup_guide">Anthropic Console-де API кілтін жасаңыз. Пайдалану Anthropic есептік жазбаңызға есептеледі.</string>
     <string name="settings_menu_how_to_use">Пайдалану нұсқаулығы</string>
     <string name="settings_menu_privacy_policy">Құпиялылық саясаты</string>
-    <string name="source_language_no_screen_reader">Экрандағы мәтінді тану қолдау көрсетілмейді</string>
     <string name="ocr_model_preparing">Аударма жүйесі дайындалуда. Сәл күте тұрыңыз.</string>
     <string name="error_translate_invalid_key">API кілті жарамсыз. Оны параметрлерден тексеріңіз.</string>
     <string name="error_translate_no_credit">Есептік жазбада кредит қалмады. Провайдер консолінде толтырыңыз.</string>
@@ -122,4 +121,5 @@
     <string name="translation_domain_comic">Комикс</string>
     <string name="translation_domain_tech">Техникалық</string>
     <string name="translation_domain_business">Бизнес</string>
+  <string name="api_key_clear">Тазалау</string>
 </resources>

@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console හි API යතුරක් සාදන්න. භාවිතය ඔබගේ Anthropic ගිණුමට බිල් කෙරේ.</string>
     <string name="settings_menu_how_to_use">භාවිත ක්‍රමය</string>
     <string name="settings_menu_privacy_policy">රහස්‍යතා ප්‍රතිපත්තිය</string>
-    <string name="source_language_no_screen_reader">තිර පෙළ හඳුනාගැනීමට සහාය නොදක්වයි</string>
     <string name="ocr_model_preparing">පරිවර්තන එන්ජිම සූදානම් වෙමින් පවතී. කරුණාකර මොහොතක් රැඳී සිටින්න.</string>
     <string name="error_translate_invalid_key">API යතුර වලංගු නැත. සැකසීම්වල පරීක්ෂා කරන්න.</string>
     <string name="error_translate_no_credit">ගිණුමේ ණය ඉතිරි නැත. සපයන්නාගේ කොන්සෝලයෙන් පුරවන්න.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">විකට</string>
     <string name="translation_domain_tech">තාක්ෂණික</string>
     <string name="translation_domain_business">ව්‍යාපාරික</string>
+  <string name="api_key_clear">හිස් කරන්න</string>
 </resources>

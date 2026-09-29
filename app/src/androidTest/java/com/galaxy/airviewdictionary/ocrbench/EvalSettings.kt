@@ -1,6 +1,6 @@
 package com.galaxy.airviewdictionary.ocrbench
 
-import com.galaxy.airviewdictionary.data.local.vision.VisionRepository
+import com.galaxy.airviewdictionary.data.local.vision.AssemblyParams
 
 /**
  * 조립 상수 한 벌. 지정하지 않은 값은 언어별 기본값(= 출시값)을 쓴다.
@@ -27,46 +27,41 @@ class EvalSetting(val label: String, val values: Map<String, Double>) {
     val postProcess: Boolean get() = (values["post"] ?: 1.0) != 0.0
 
     /**
-     * 기준값을 채우고 이 설정의 값으로 덮는다.
+     * 이 설정의 기준값 한 벌 — 출시값을 채우고 이 설정의 값으로 덮는다.
      *
      * [vertical] 을 따로 받는 이유 — 프로덕션 세로 분기는 한 화면 안에서 세로 부분에는
-     * `setReferenceConstantValue(true, …)`, 가로 부분에는 `(false, …)` 를 따로 부른다. 그래서
-     * 한 표본을 조립하는 동안 두 번 적용해야 할 수 있다.
+     * `AssemblyParams.reference(true, …)`, 가로 부분에는 `(false, …)` 를 따로 쓴다. 그래서
+     * 한 표본을 조립하는 데 두 벌이 필요할 수 있다.
      */
-    fun applyTo(
-        repository: VisionRepository,
-        sample: Sample,
-        vertical: Boolean = sample.isVertical,
-    ) = with(repository) {
+    internal fun paramsFor(sample: Sample, vertical: Boolean = sample.isVertical): AssemblyParams {
         // 검출기 경로는 기준값이 다르다 — 줄 박스가 글자에 붙어 채움비가 또렷하고, 줄 간격을
         // 박스 높이가 아니라 화면 대표 pitch 로 잰다.
-        setReferenceConstantValue(vertical, sample.lang, sample.linesFromDetector)
+        var params = AssemblyParams.reference(vertical, sample.lang, sample.linesFromDetector)
         for ((rawKey, value) in values) {
             if (rawKey.startsWith(VERTICAL_ONLY) && !vertical) continue
-            applyKey(rawKey.removePrefix(VERTICAL_ONLY), value)
+            params = params.withKey(rawKey.removePrefix(VERTICAL_ONLY), value)
         }
+        return params
     }
 
-    private fun VisionRepository.applyKey(key: String, value: Double) {
-        when (key) {
-            "post" -> Unit // 상수가 아니라 조립 절차의 선택이다. [postProcess] 가 읽는다
-            "indent" -> LINE_INDENT_LIMIT = value
-            "guard" -> LINE_INDENT_FILL_GUARD = value
-            "fill" -> LINE_FILL_MINIMUM_RATIO = value
-            "affinity" -> LINE_FONT_HEIGHT_SPACING_AFFINITY_LIMIT = value
-            "lineHeight" -> LINE_FONT_HEIGHT_SIMILARITY_MINIMUM_RATIO = value
-            "overlap" -> LINE_WRITE_DIRECTION_OVERLAP_MINIMUM_RATIO = value
-            "pitch" -> LINE_PITCH_LIMIT = value
-            "wordGap" -> WORD_WRITE_DIRECTION_DISTANCE_FONT_HEIGHT_RATIO_LIMIT = value
-            "wordAxis" -> WORD_AXIS_FONT_HEIGHT_SIMILARITY_MINIMUM_RATIO = value
-            "axis" -> LINE_MEASURE_ALONG_WRITING_AXIS = value != 0.0
-            "head" -> LINE_HEADING_HEIGHT_RATIO = value
-            "hwidth" -> LINE_HEADING_WIDTH_RATIO = value
-            "vmerge" -> VERTICAL_COLUMN_MERGE = value != 0.0
-            "vpost" -> VERTICAL_SPLIT = value != 0.0
-            "colgap" -> WORD_COLUMN_GAP_ROWS = value.toInt()
-            else -> throw IllegalArgumentException("모르는 키 '$key'. 쓸 수 있는 것: $KEYS")
-        }
+    private fun AssemblyParams.withKey(key: String, value: Double): AssemblyParams = when (key) {
+        "post" -> this // 상수가 아니라 조립 절차의 선택이다. [postProcess] 가 읽는다
+        "indent" -> copy(LINE_INDENT_LIMIT = value)
+        "guard" -> copy(LINE_INDENT_FILL_GUARD = value)
+        "fill" -> copy(LINE_FILL_MINIMUM_RATIO = value)
+        "affinity" -> copy(LINE_FONT_HEIGHT_SPACING_AFFINITY_LIMIT = value)
+        "lineHeight" -> copy(LINE_FONT_HEIGHT_SIMILARITY_MINIMUM_RATIO = value)
+        "overlap" -> copy(LINE_WRITE_DIRECTION_OVERLAP_MINIMUM_RATIO = value)
+        "pitch" -> copy(LINE_PITCH_LIMIT = value)
+        "wordGap" -> copy(WORD_WRITE_DIRECTION_DISTANCE_FONT_HEIGHT_RATIO_LIMIT = value)
+        "wordAxis" -> copy(WORD_AXIS_FONT_HEIGHT_SIMILARITY_MINIMUM_RATIO = value)
+        "axis" -> copy(LINE_MEASURE_ALONG_WRITING_AXIS = value != 0.0)
+        "head" -> copy(LINE_HEADING_HEIGHT_RATIO = value)
+        "hwidth" -> copy(LINE_HEADING_WIDTH_RATIO = value)
+        "vmerge" -> copy(VERTICAL_COLUMN_MERGE = value != 0.0)
+        "vpost" -> copy(VERTICAL_SPLIT = value != 0.0)
+        "colgap" -> copy(WORD_COLUMN_GAP_ROWS = value.toInt())
+        else -> throw IllegalArgumentException("모르는 키 '$key'. 쓸 수 있는 것: $KEYS")
     }
 
     companion object {

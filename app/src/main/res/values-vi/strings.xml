@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Tạo khóa API trong Anthropic Console. Mức sử dụng được tính vào tài khoản Anthropic của bạn.</string>
   <string name="settings_menu_how_to_use">Hướng dẫn sử dụng</string>
   <string name="settings_menu_privacy_policy">Chính sách quyền riêng tư</string>
-  <string name="source_language_no_screen_reader">Không hỗ trợ nhận dạng văn bản trên màn hình</string>
   <string name="ocr_model_preparing">Đang chuẩn bị công cụ dịch. Vui lòng đợi một lát.</string>
   <string name="error_translate_invalid_key">Khóa API không hợp lệ. Kiểm tra trong Cài đặt.</string>
   <string name="error_translate_no_credit">Tài khoản đã hết tín dụng. Nạp thêm trong bảng điều khiển của nhà cung cấp.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Truyện tranh</string>
     <string name="translation_domain_tech">Kỹ thuật</string>
     <string name="translation_domain_business">Kinh doanh</string>
+  <string name="api_key_clear">Xóa</string>
 </resources>

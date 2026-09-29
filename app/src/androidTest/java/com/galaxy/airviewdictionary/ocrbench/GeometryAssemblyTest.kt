@@ -3,6 +3,7 @@ package com.galaxy.airviewdictionary.ocrbench
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.test.platform.app.InstrumentationRegistry
+import com.galaxy.airviewdictionary.data.local.vision.AssemblyParams
 import com.galaxy.airviewdictionary.data.local.vision.VisionRepository
 import com.galaxy.airviewdictionary.data.local.vision.WritingDirection
 import com.galaxy.airviewdictionary.data.local.vision.model.Line
@@ -41,13 +42,13 @@ class GeometryAssemblyTest {
         log("입력 단어 ${words.size}개")
 
         val repository = VisionRepository()
-        repository.setReferenceConstantValue(false, "ar", linesFromDetector = true)
+        val params = AssemblyParams.reference(false, "ar", linesFromDetector = true)
         val canvas = Bitmap.createBitmap(1440, 3120, Bitmap.Config.ARGB_8888)
 
         // ① 지금 방식 — 단어에서 줄을 다시 유도한다.
-        val derived = repository.groupWordsIntoLines(words, WritingDirection.RTL)
+        val derived = repository.groupWordsIntoLines(words, WritingDirection.RTL, params)
         log("① 단어에서 유도한 줄: ${derived.size}개 (단어/줄 평균 ${"%.1f".format(words.size.toFloat() / derived.size)})")
-        log("   문단 ${repository.groupLinesIntoParagraphs(derived, WritingDirection.RTL).size}개")
+        log("   문단 ${repository.groupLinesIntoParagraphs(derived, WritingDirection.RTL, params).size}개")
 
         // ② 검출기가 준 줄을 그대로 쓴다. 같은 줄 상자에서 나온 단어는 같은 줄이다.
         val byDetectedLine = words.groupBy { it.boundingBox.top to it.boundingBox.bottom }
@@ -56,7 +57,7 @@ class GeometryAssemblyTest {
         }
         log("② 검출기가 준 줄: ${detected.size}개 (단어/줄 평균 ${"%.1f".format(words.size.toFloat() / detected.size)})")
 
-        val paragraphs = repository.groupLinesIntoParagraphs(detected, WritingDirection.RTL)
+        val paragraphs = repository.groupLinesIntoParagraphs(detected, WritingDirection.RTL, params)
         log("   문단 ${paragraphs.size}개")
         paragraphs.forEachIndexed { i, p ->
             p.languageCode = "ar"

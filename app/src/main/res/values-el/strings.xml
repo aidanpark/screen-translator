@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Δημιουργήστε ένα κλειδί API στο Anthropic Console. Η χρήση χρεώνεται στον λογαριασμό σας Anthropic.</string>
     <string name="settings_menu_how_to_use">Οδηγίες χρήσης</string>
     <string name="settings_menu_privacy_policy">Πολιτική απορρήτου</string>
-    <string name="source_language_no_screen_reader">Η αναγνώριση κειμένου οθόνης δεν υποστηρίζεται</string>
     <string name="ocr_model_preparing">Προετοιμασία της μηχανής μετάφρασης. Περιμένετε λίγο.</string>
     <string name="error_translate_invalid_key">Το κλειδί API δεν είναι έγκυρο. Ελέγξτε το στις ρυθμίσεις.</string>
     <string name="error_translate_no_credit">Δεν υπάρχουν μονάδες στον λογαριασμό. Κάντε ανανέωση στην κονσόλα του παρόχου.</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">Κόμικς</string>
     <string name="translation_domain_tech">Τεχνικά</string>
     <string name="translation_domain_business">Επιχειρήσεις</string>
+  <string name="api_key_clear">Διαγραφή</string>
 </resources>
 
 

@@ -28,14 +28,20 @@ class AutoPickDumpTest {
 
     @Test
     fun dumpCandidates() = runBlocking {
-        val kits = VisionKitSelector().candidatesFor("auto")
+        // kits=TEXT 처럼 주면 그 인식기만 덤프한다(성능 P4-2 — PP-OCRv5 문자 화면의 라틴 인식기)
+        val only = InstrumentationRegistry.getArguments().getString("kits")?.split(",")?.map { it.trim() }
+        val kits = VisionKitSelector().candidatesFor("auto").filter { only == null || it.name in only }
         val given = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")
         val outDir = File(given ?: appContext.externalMediaDirs.first().path, "autopick").apply { mkdirs() }
-        val names = context.assets.list("")!!.filter { it.startsWith("real_") && it.endsWith(".png") }
+        // 앱 외부 미디어의 autopick_png/ 에 real_<이름>.png 가 있으면 에셋 대신 거기서 읽는다(많은 표본을 APK 재빌드 없이)
+        val pngDir = File(appContext.externalMediaDirs.first(), "autopick_png").takeIf { it.isDirectory }
+        val names = (pngDir?.list()?.toList() ?: context.assets.list("")!!.toList())
+            .filter { it.startsWith("real_") && it.endsWith(".png") }
             .map { it.removePrefix("real_").removeSuffix(".png") }.sorted()
 
         for (name in names) {
-            val bytes = context.assets.open("real_$name.png").use { it.readBytes() }
+            if (File(outDir, "$name.json").exists()) continue
+            val bytes = pngDir?.let { File(it, "real_$name.png").readBytes() } ?: context.assets.open("real_$name.png").use { it.readBytes() }
             val screen = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
             val variants = JSONArray()
             val random = Random(name.hashCode())

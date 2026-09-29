@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console मध्ये API की तयार करा. वापराचे बिल तुमच्या Anthropic खात्यावर आकारले जाते.</string>
     <string name="settings_menu_how_to_use">वापरण्याची पद्धत</string>
     <string name="settings_menu_privacy_policy">गोपनीयता धोरण</string>
-    <string name="source_language_no_screen_reader">स्क्रीन मजकूर ओळख समर्थित नाही</string>
     <string name="ocr_model_preparing">भाषांतर इंजिन तयार होत आहे. कृपया थोडी प्रतीक्षा करा.</string>
     <string name="error_translate_invalid_key">API की अवैध आहे. सेटिंग्जमध्ये तपासा.</string>
     <string name="error_translate_no_credit">खात्यात क्रेडिट शिल्लक नाही. प्रदात्याच्या कन्सोलमध्ये टॉप-अप करा.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">कॉमिक</string>
     <string name="translation_domain_tech">तांत्रिक</string>
     <string name="translation_domain_business">व्यवसाय</string>
+  <string name="api_key_clear">साफ करा</string>
 </resources>

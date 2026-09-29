@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">یک کلید API در Anthropic Console بسازید. مصرف به حساب Anthropic شما صورت‌حساب می‌شود.</string>
     <string name="settings_menu_how_to_use">راهنمای استفاده</string>
     <string name="settings_menu_privacy_policy">سیاست حفظ حریم خصوصی</string>
-    <string name="source_language_no_screen_reader">تشخیص متن صفحه پشتیبانی نمی‌شود</string>
     <string name="ocr_model_preparing">موتور ترجمه در حال آماده‌سازی است. لطفاً کمی صبر کنید.</string>
     <string name="error_translate_invalid_key">کلید API نامعتبر است. آن را در تنظیمات بررسی کنید.</string>
     <string name="error_translate_no_credit">اعتباری در حساب شما نمانده است. در کنسول ارائه‌دهنده شارژ کنید.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">کمیک</string>
     <string name="translation_domain_tech">فنی</string>
     <string name="translation_domain_business">کسب‌وکار</string>
+  <string name="api_key_clear">پاک کردن</string>
 </resources>

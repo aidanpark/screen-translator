@@ -18,6 +18,7 @@ import com.google.firebase.Firebase
 import com.google.firebase.remoteconfig.remoteConfig
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -26,6 +27,9 @@ import org.junit.Test
 /**
  * PP-OCRv5 끄기 스위치(`.docs/vision-engine-design.md` §19)와 영역 선택의 검정 칠(§17). 스위치 값은 Remote Config 기본값으로 바꿔 본다 —
  * 콘솔에 올리지 않고 같은 판정 경로(`getValue`)를 탄다.
+ *
+ * 디버그 앱을 실제로 띄워 원격값을 받은 적이 있으면(`files/frc_*_firebase_activate.json`) 원격값이 기본값을 이겨 끄는 시험이 실패한다
+ * (`PaddleFailSafeTest` 도 같다). `adb shell pm clear <디버그 패키지>` 뒤에 돌린다.
  */
 class PaddleSwitchTest {
 
@@ -98,6 +102,24 @@ class PaddleSwitchTest {
         val tx = (response as VisionResponse.Success).result
         assertTrue("아랍 문자권으로 판정해야 한다: ${tx.detectedLanguageCode}", tx.detectedLanguageCode in setOf("ar", "fa", "ur"))
         assertTrue("읽은 글에 아랍어가 있어야 한다: '${tx.ocr.text}'", tx.ocr.text.any { it in '\u0600'..'\u06FF' })
+    }
+
+    /**
+     * 4줄 이하의 작은 화면을 auto 로 — PP-OCRv5 표본이 줄을 모두 읽는다. 그래도 언어를 지정했을 때처럼 검출기 줄로 조립해야 한다
+     * (예전에는 다 읽혔다는 이유로 ML Kit 조립 규칙으로 가서 문단이 달리 묶였다).
+     */
+    @Test
+    fun smallAutoScreenAssemblesLikeNamedLanguage() {
+        val (bitmap, boxes) = screen()
+        val small = createOverlaidBitmap(bitmap, boxes[0])
+        val auto = runBlocking { (repository.request(small, "auto") as VisionResponse.Success).result }
+        val named = runBlocking { (repository.request(small, "ar") as VisionResponse.Success).result }
+        assertTrue("표본이 모든 줄을 읽는 화면이어야 한다: ${auto.ocr.lines.size}줄", auto.ocr.lines.size in 1..4 && auto.ocr.isFullyRead)
+        assertNotNull("검출기 줄로 조립한 화면이어야 한다", auto.unread)
+        assertTrue("아랍 문자권으로 판정해야 한다: ${auto.detectedLanguageCode}", auto.detectedLanguageCode in setOf("ar", "fa", "ur"))
+        assertEquals("문단 상자가 언어를 지정했을 때와 같아야 한다", named.paragraphs.map { it.boundingBox }, auto.paragraphs.map { it.boundingBox })
+        val read = runBlocking { repository.readParagraph(auto, auto.paragraphs.first()) }
+        assertTrue("가리킨 문단의 글이 나와야 한다: ${read?.representation}", read?.representation?.contains("النيل") == true)
     }
 
     @Test

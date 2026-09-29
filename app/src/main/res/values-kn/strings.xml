@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console ನಲ್ಲಿ API ಕೀ ರಚಿಸಿ. ಬಳಕೆಯನ್ನು ನಿಮ್ಮ Anthropic ಖಾತೆಗೆ ಬಿಲ್ ಮಾಡಲಾಗುತ್ತದೆ.</string>
     <string name="settings_menu_how_to_use">ಬಳಕೆ ವಿಧಾನ</string>
     <string name="settings_menu_privacy_policy">ಗೌಪ್ಯತಾ ನೀತಿ</string>
-    <string name="source_language_no_screen_reader">ಪರದೆಯ ಪಠ್ಯ ಗುರುತಿಸುವಿಕೆ ಬೆಂಬಲಿತವಾಗಿಲ್ಲ</string>
     <string name="ocr_model_preparing">ಅನುವಾದ ಎಂಜಿನ್ ಸಿದ್ಧವಾಗುತ್ತಿದೆ. ದಯವಿಟ್ಟು ಸ್ವಲ್ಪ ಕಾಯಿರಿ.</string>
     <string name="error_translate_invalid_key">API ಕೀ ಅಮಾನ್ಯವಾಗಿದೆ. ಸೆಟ್ಟಿಂಗ್‌ಗಳಲ್ಲಿ ಪರಿಶೀಲಿಸಿ.</string>
     <string name="error_translate_no_credit">ಖಾತೆಯಲ್ಲಿ ಕ್ರೆಡಿಟ್ ಉಳಿದಿಲ್ಲ. ಪೂರೈಕೆದಾರರ ಕನ್ಸೋಲ್‌ನಲ್ಲಿ ಟಾಪ್-ಅಪ್ ಮಾಡಿ.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">ಕಾಮಿಕ್</string>
     <string name="translation_domain_tech">ತಾಂತ್ರಿಕ</string>
     <string name="translation_domain_business">ವ್ಯವಹಾರ</string>
+  <string name="api_key_clear">ತೆರವುಗೊಳಿಸಿ</string>
 </resources>

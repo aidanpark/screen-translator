@@ -256,8 +256,7 @@ class GeometryEvalTest {
             val gaps = mutableListOf<Double>()
             for (sample in samples) {
                 if (sample.input != InputUnit.WORDS) continue // 앱이 줄을 유도하는 경로에만 해당한다
-                setting.applyTo(repository, sample)
-                val lines = repository.groupWordsIntoLines(sample.buildWords(), sample.direction)
+                val lines = repository.groupWordsIntoLines(sample.buildWords(), sample.direction, setting.paramsFor(sample))
                 for (band in EvalMetrics.bands(lines, sample.isVertical) { it.boundingBox }) {
                     bands++
                     if (band.size < 2) continue

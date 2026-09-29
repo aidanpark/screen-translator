@@ -98,7 +98,6 @@
   <string name="claude_key_signup_guide">Gumawa ng API key sa Anthropic Console. Ang paggamit ay sinisingil sa iyong Anthropic account.</string>
     <string name="settings_menu_how_to_use">Paano gamitin</string>
     <string name="settings_menu_privacy_policy">Patakaran sa Privacy</string>
-    <string name="source_language_no_screen_reader">Hindi sinusuportahan ang pagkilala ng teksto sa screen</string>
     <string name="ocr_model_preparing">Inihahanda ang translation engine. Mangyaring maghintay sandali.</string>
     <string name="error_translate_invalid_key">Hindi valid ang API key. Suriin ito sa Settings.</string>
     <string name="error_translate_no_credit">Wala nang credits sa iyong account. Mag-top up sa console ng provider.</string>
@@ -122,4 +121,5 @@
     <string name="translation_domain_comic">Komiks</string>
     <string name="translation_domain_tech">Teknikal</string>
     <string name="translation_domain_business">Negosyo</string>
+  <string name="api_key_clear">I-clear</string>
 </resources>

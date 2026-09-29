@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">在 Anthropic Console 中创建 API 密钥。用量将计入您的 Anthropic 账户。</string>
   <string name="settings_menu_how_to_use">使用方法</string>
   <string name="settings_menu_privacy_policy">隐私政策</string>
-  <string name="source_language_no_screen_reader">不支持屏幕文字识别</string>
   <string name="ocr_model_preparing">正在准备翻译引擎，请稍候。</string>
   <string name="error_translate_invalid_key">API 密钥无效。请在设置中检查。</string>
   <string name="error_translate_no_credit">账户余额不足。请在服务商控制台充值。</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">漫画</string>
     <string name="translation_domain_tech">技术</string>
     <string name="translation_domain_business">商务</string>
+  <string name="api_key_clear">清除</string>
 </resources>

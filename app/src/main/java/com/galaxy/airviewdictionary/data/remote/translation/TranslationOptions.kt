@@ -3,10 +3,9 @@ package com.galaxy.airviewdictionary.data.remote.translation
 import com.galaxy.airviewdictionary.R
 
 /**
- * AI 번역 엔진의 문맥/스타일 옵션.
+ * AI 번역 엔진의 문맥/스타일 옵션과 프롬프트.
  *
- * 사용자 API 키로 동작하는 엔진에만 적용된다(Google/DeepL 은 프롬프트 개념이 없다).
- * 현재는 OpenAI 만 지원하며, 다른 AI 엔진으로 넓힐 때 그대로 재사용한다.
+ * 사용자 API 키로 동작하는 엔진(OpenAI·Gemini·Claude)이 함께 쓴다(Google/DeepL 은 프롬프트 개념이 없다).
  */
 
 /** 번역할 문장 주변 텍스트를 얼마나 함께 보낼지. */
@@ -80,7 +79,11 @@ enum class TranslationDomain(val labelResourceId: Int, val promptClause: String?
 }
 
 /**
- * AI 번역 엔진들이 공유하는 시스템 프롬프트.
+ * AI 번역 엔진들이 공유하는 시스템 프롬프트. 번역할 것은 화면에서 OCR 로 읽은 글이다(단어·문장·문단, 영역 선택은 여러 줄).
+ *
+ * 원문 언어를 모르면([sourceLanguageName] = null, auto) 원문 언어를 적지 않고 번역만 청한다. 따로 판정을 청하던 문구("Detect the source
+ * language")는 뺐다 — 모델은 글을 읽으며 언어를 알고, 판정한 언어를 돌려받는 곳도 없다(돌려받던 것은 걷어낸 이미지 경로뿐이었다,
+ * `.docs/vision-engine-design.md` §24.13). auto 에 ML Kit 식별값을 원문으로 박지 않는 이유는 `TranslationSourceLanguage.forKit` 참고.
  *
  * 출력 형식 제약을 스타일 지시보다 **먼저** 둔다. 순서가 뒤바뀌면 분야/강도 문구가
  * "번역문만 출력" 규칙을 흔들어 설명문이 섞여 나온다.
@@ -93,7 +96,7 @@ fun buildTranslationSystemPrompt(
     hasContext: Boolean,
 ): String {
     val fromClause = if (sourceLanguageName == null) {
-        "Detect the source language and translate the user's text into $targetLanguageName."
+        "Translate the user's text into $targetLanguageName."
     } else {
         "Translate the user's text from $sourceLanguageName into $targetLanguageName."
     }

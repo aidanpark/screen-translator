@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Unda ufunguo wa API katika Anthropic Console. Matumizi hutozwa kwenye akaunti yako ya Anthropic.</string>
     <string name="settings_menu_how_to_use">Jinsi ya kutumia</string>
     <string name="settings_menu_privacy_policy">Sera ya faragha</string>
-    <string name="source_language_no_screen_reader">Utambuzi wa maandishi ya skrini hautumiki</string>
     <string name="ocr_model_preparing">Injini ya tafsiri inaandaliwa. Tafadhali subiri kidogo.</string>
     <string name="error_translate_invalid_key">Ufunguo wa API si sahihi. Ukague katika Mipangilio.</string>
     <string name="error_translate_no_credit">Hakuna salio kwenye akaunti. Ongeza kwenye konsoli ya mtoa huduma.</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">Katuni</string>
     <string name="translation_domain_tech">Kiufundi</string>
     <string name="translation_domain_business">Biashara</string>
+  <string name="api_key_clear">Futa</string>
 </resources>
 
 

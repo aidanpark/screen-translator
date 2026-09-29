@@ -103,7 +103,6 @@
     <string name="settings_menu_app_version_latest">(Latest)</string>
     <string name="settings_menu_how_to_use">How to Use</string>
     <string name="settings_menu_privacy_policy">Privacy Policy</string>
-    <string name="source_language_no_screen_reader">Screen text recognition not supported</string>
     <!-- 고유명사라 번역 불필요. 기본 리소스만 정의하고 전체 로케일이 폴백으로 사용한다. -->
     <string name="settings_menu_github" translatable="false">GitHub</string>
 
@@ -131,4 +130,5 @@
     <string name="error_translate_generic">Translation failed. Please try again.</string>
     <!-- LLM 키 저장 성공 시 기대치 안내 (키 유효 ≠ 크레딧 보유) -->
     <string name="key_saved_credit_hint">Key verified. Translation also requires credits or free quota on your account.</string>
+    <string name="api_key_clear">Clear</string>
 </resources>

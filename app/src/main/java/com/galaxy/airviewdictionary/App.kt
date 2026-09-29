@@ -97,7 +97,8 @@ class App : Application() {
      * 숨겨진 채 남는다. lifecycle-process 의존성 없이 started 액티비티 수를 세어 판정한다.
      *
      * 전면 광고(AdActivity)도 우리 프로세스의 액티비티라, 광고가 떠 있는 동안에는
-     * 카운트가 0 이 되지 않는다 → 광고 위에 오버레이가 노출될 일은 없다.
+     * 카운트가 0 이 되지 않는다. 광고를 클릭해 나갔다가 광고 화면으로 돌아오면 오버레이를 다시 가린다 —
+     * 보상을 받은 뒤라 게이트가 이미 닫혔어도 그렇다.
      */
     private fun registerAdGateBackgroundCleanup() {
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
@@ -105,15 +106,17 @@ class App : Application() {
 
             override fun onActivityStarted(activity: Activity) {
                 startedCount++
-                // 백그라운드 -> 전면 복귀. 게이트가 살아 있으면 오버레이를 도로 숨긴다
-                // (광고 클릭 후 복귀 시 핸들이 광고 위에 뜨지 않도록).
-                if (startedCount == 1) {
-                    AdGateActivity.hideOverlaysIfGateAlive()
+                // 게이트나 광고 화면이 앞에 오면 오버레이를 가린다(광고 클릭 후 복귀 시 핸들이 광고 위에 뜨지 않도록).
+                if (AdGateActivity.coversOverlays(activity)) {
+                    AdGateActivity.coverOverlays()
                 }
             }
 
             override fun onActivityStopped(activity: Activity) {
                 startedCount--
+                if (AdGateActivity.isAdScreen(activity)) {
+                    AdGateActivity.onAdScreenStopped()
+                }
                 if (startedCount > 0) return
                 startedCount = 0
                 // 구성 변경(회전 등)으로 인한 재생성 중에는 카운트가 순간 0 이 된다.

@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">أنشئ مفتاح API في Anthropic Console. تتم محاسبة الاستخدام على حساب Anthropic الخاص بك.</string>
   <string name="settings_menu_how_to_use">طريقة الاستخدام</string>
   <string name="settings_menu_privacy_policy">سياسة الخصوصية</string>
-  <string name="source_language_no_screen_reader">التعرّف على نص الشاشة غير مدعوم</string>
   <string name="ocr_model_preparing">جارٍ تجهيز محرك الترجمة. يُرجى الانتظار قليلًا.</string>
   <string name="error_translate_invalid_key">مفتاح API غير صالح. تحقق منه في الإعدادات.</string>
   <string name="error_translate_no_credit">لا يوجد رصيد في حسابك. أعد الشحن من لوحة تحكم المزوّد.</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">قصص مصورة</string>
     <string name="translation_domain_tech">تقني</string>
     <string name="translation_domain_business">أعمال</string>
+  <string name="api_key_clear">مسح</string>
 </resources>
 
 

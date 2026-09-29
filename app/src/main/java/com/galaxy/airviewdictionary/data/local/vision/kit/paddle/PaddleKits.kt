@@ -6,9 +6,11 @@ import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrLine
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrText
 import com.galaxy.airviewdictionary.data.local.vision.ocr.ReadingOrder
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.util.IdentityHashMap
 
@@ -51,11 +53,45 @@ class PaddleKits(files: PaddleModelFiles) {
      * 후보의 [AutoCandidate.ocr] 는 검출한 화면 전체다 — 표본으로 읽은 줄만 읽힌 채이고 나머지는 읽지 않았다. 이긴 후보는 이것으로
      * 검출만 된 화면을 만들고, 표본 줄은 다시 읽지 않는다.
      */
-    suspend fun autoCandidates(screen: Bitmap): List<AutoCandidate> = coroutineScope {
-        if (!PaddleSwitch.autoEnabled) return@coroutineScope emptyList()
-        val ready = scripts.keys.filter { it.isReady() }
+    suspend fun autoCandidates(screen: Bitmap): List<AutoCandidate> =
+        autoDetect(screen)?.let { autoCandidates(screen, it) } ?: emptyList()
+
+    /**
+     * auto 의 화면 검출만. 모델이 아직 없거나 스위치로 꺼 두었으면 null. auto 는 이 검출로 라틴 인식기가 글자 자리를 얼마나 덮었는지도 본다
+     * (`.docs/perf-experiment-plan.md` §5) — 그래서 표본 읽기([autoCandidates])와 나눠 두었다.
+     */
+    suspend fun autoDetect(screen: Bitmap): OcrText? {
+        if (!PaddleSwitch.autoEnabled) return null
+        val ready = withContext(Dispatchers.Default) { scripts.keys.filter { it.isReady() } }
+        return ready.firstOrNull()?.detect(screen)
+    }
+
+    /**
+     * 줄 위치만 찾는다 — AI 이미지 번역이 자를 줄·문단을 정한다(§25). 검출기는 문자와 무관하게 줄을 찾으므로 읽을 엔진이 없는 문자에도
+     * 쓴다. 모델이 아직 없거나 스위치로 꺼 두었으면 null.
+     */
+    suspend fun detectLines(screen: Bitmap): OcrText? {
+        if (!PaddleSwitch.enabled) return null
+        val ready = withContext(Dispatchers.Default) { scripts.keys.firstOrNull { it.isReady() } } ?: return null
+        return ready.detect(screen)
+    }
+
+    /**
+     * 고정 영역이 "글이 바뀌었나" 를 가를 지문(§25) — 읽을 엔진이 없는 문자라 뜻 있는 글은 아니다. 같은 화소면 같은 글이 나온다
+     * (ML Kit 은 같은 화면도 캡처마다 다른 쓰레기를 내놓았다, 2026-09-22). 모델이 아직 없거나 스위치로 꺼 두었으면 null.
+     */
+    suspend fun fingerprint(screen: Bitmap): String? {
+        if (!PaddleSwitch.enabled) return null
+        val ready = withContext(Dispatchers.Default) { scripts.keys.firstOrNull { it.isReady() } } ?: return null
+        val lines = ready.detect(screen).lines
+        if (lines.isEmpty()) return ""
+        return ReadingOrder.text(ready.recognize(screen, lines))
+    }
+
+    /** [autoDetect] 한 화면으로 표본을 읽는다. */
+    suspend fun autoCandidates(screen: Bitmap, detected: OcrText): List<AutoCandidate> = coroutineScope {
+        val ready = withContext(Dispatchers.Default) { scripts.keys.filter { it.isReady() } }
         if (ready.isEmpty()) return@coroutineScope emptyList()
-        val detected = ready.first().detect(screen)
         val sample = detected.lines.sortedByDescending { it.boundingBox?.width() ?: 0 }.take(SAMPLE_LINES)
         if (sample.isEmpty()) return@coroutineScope emptyList()
         ready.map { kit ->

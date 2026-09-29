@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console ਵਿੱਚ ਇੱਕ API ਕੁੰਜੀ ਬਣਾਓ। ਵਰਤੋਂ ਤੁਹਾਡੇ Anthropic ਖਾਤੇ ਵਿੱਚ ਬਿਲ ਕੀਤੀ ਜਾਂਦੀ ਹੈ।</string>
     <string name="settings_menu_how_to_use">ਵਰਤਣ ਦਾ ਤਰੀਕਾ</string>
     <string name="settings_menu_privacy_policy">ਪਰਦੇਦਾਰੀ ਨੀਤੀ</string>
-    <string name="source_language_no_screen_reader">ਸਕ੍ਰੀਨ ਟੈਕਸਟ ਪਛਾਣ ਸਮਰਥਿਤ ਨਹੀਂ ਹੈ</string>
     <string name="ocr_model_preparing">ਅਨੁਵਾਦ ਇੰਜਣ ਤਿਆਰ ਹੋ ਰਿਹਾ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਥੋੜ੍ਹਾ ਇੰਤਜ਼ਾਰ ਕਰੋ।</string>
     <string name="error_translate_invalid_key">API ਕੁੰਜੀ ਅਵੈਧ ਹੈ। ਸੈਟਿੰਗਾਂ ਵਿੱਚ ਜਾਂਚੋ।</string>
     <string name="error_translate_no_credit">ਖਾਤੇ ਵਿੱਚ ਕ੍ਰੈਡਿਟ ਨਹੀਂ ਬਚੇ। ਪ੍ਰਦਾਤਾ ਦੇ ਕੰਸੋਲ ਵਿੱਚ ਟਾਪ-ਅੱਪ ਕਰੋ।</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">ਕਾਮਿਕ</string>
     <string name="translation_domain_tech">ਤਕਨੀਕੀ</string>
     <string name="translation_domain_business">ਕਾਰੋਬਾਰ</string>
+  <string name="api_key_clear">ਸਾਫ਼ ਕਰੋ</string>
 </resources>

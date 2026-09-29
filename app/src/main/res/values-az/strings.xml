@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console-da API açarı yaradın. İstifadə haqqı Anthropic hesabınıza yazılır.</string>
     <string name="settings_menu_how_to_use">İstifadə qaydası</string>
     <string name="settings_menu_privacy_policy">Məxfilik siyasəti</string>
-    <string name="source_language_no_screen_reader">Ekran mətninin tanınması dəstəklənmir</string>
     <string name="ocr_model_preparing">Tərcümə mühərriki hazırlanır. Zəhmət olmasa bir az gözləyin.</string>
     <string name="error_translate_invalid_key">API açarı etibarsızdır. Parametrlərdə yoxlayın.</string>
     <string name="error_translate_no_credit">Hesabınızda kredit qalmayıb. Provayderin konsolunda balansı artırın.</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">Komiks</string>
     <string name="translation_domain_tech">Texniki</string>
     <string name="translation_domain_business">Biznes</string>
+  <string name="api_key_clear">Təmizlə</string>
 </resources>
 
 

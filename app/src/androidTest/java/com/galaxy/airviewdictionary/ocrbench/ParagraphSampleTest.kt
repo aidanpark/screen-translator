@@ -3,6 +3,7 @@ package com.galaxy.airviewdictionary.ocrbench
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.test.platform.app.InstrumentationRegistry
+import com.galaxy.airviewdictionary.data.local.vision.AssemblyParams
 import com.galaxy.airviewdictionary.data.local.vision.VisionRepository
 import com.galaxy.airviewdictionary.data.local.vision.WritingDirection
 import com.galaxy.airviewdictionary.data.local.vision.model.Line
@@ -60,14 +61,14 @@ class ParagraphSampleTest {
             val detail = StringBuilder()
             for (lang in listOf("ar", "fa", "ru", "th")) {
                 val direction = if (lang in rtl) WritingDirection.RTL else WritingDirection.LTR
-                repository.setReferenceConstantValue(false, lang, linesFromDetector = true)
+                val params = AssemblyParams.reference(false, lang, linesFromDetector = true)
                 val ls = lines(lang, variant, direction)
                 val blocks = truth(lang)
 
                 fun blockOf(line: Line): Int =
                     blocks.firstOrNull { it.rect.contains(line.boundingBox.centerX(), line.boundingBox.centerY()) }?.id ?: -1
 
-                val paragraphs = repository.groupLinesIntoParagraphs(ls, direction)
+                val paragraphs = repository.groupLinesIntoParagraphs(ls, direction, params)
                 var langGrouped = 0; var langExpected = 0; var langBad = 0
                 for (block in blocks) {
                     val own = ls.filter { blockOf(it) == block.id }

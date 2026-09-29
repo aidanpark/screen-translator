@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console मा एउटा API कुञ्जी सिर्जना गर्नुहोस्। प्रयोगको बिल तपाईंको Anthropic खातामा गरिन्छ।</string>
     <string name="settings_menu_how_to_use">प्रयोग विधि</string>
     <string name="settings_menu_privacy_policy">गोपनीयता नीति</string>
-    <string name="source_language_no_screen_reader">स्क्रिन पाठ पहिचान समर्थित छैन</string>
     <string name="ocr_model_preparing">अनुवाद इन्जिन तयार हुँदैछ। कृपया केही क्षण पर्खनुहोस्।</string>
     <string name="error_translate_invalid_key">API कुञ्जी अमान्य छ। सेटिङमा जाँच्नुहोस्।</string>
     <string name="error_translate_no_credit">खातामा क्रेडिट बाँकी छैन। प्रदायकको कन्सोलमा रिचार्ज गर्नुहोस्।</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">कमिक</string>
     <string name="translation_domain_tech">प्राविधिक</string>
     <string name="translation_domain_business">व्यवसाय</string>
+  <string name="api_key_clear">खाली गर्नुहोस्</string>
 </resources>

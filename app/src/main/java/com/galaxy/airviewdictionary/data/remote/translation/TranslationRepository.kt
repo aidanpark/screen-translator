@@ -1,6 +1,7 @@
 package com.galaxy.airviewdictionary.data.remote.translation
 
-import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKitSelector
+import android.graphics.Bitmap
+import com.galaxy.airviewdictionary.data.local.vision.TextDetectMode
 import com.galaxy.airviewdictionary.data.AVDRepository
 import com.galaxy.airviewdictionary.data.remote.translation.claude.ClaudeKit
 import com.galaxy.airviewdictionary.data.remote.translation.deepl.DeepLKit
@@ -8,6 +9,8 @@ import com.galaxy.airviewdictionary.data.remote.translation.gemini.GeminiKit
 import com.galaxy.airviewdictionary.data.remote.translation.goolge.GoogleWebKit
 import com.galaxy.airviewdictionary.data.remote.translation.openai.OpenAiKit
 import com.galaxy.airviewdictionary.data.remote.translation.Language
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -37,7 +40,11 @@ class TranslationRepository @Inject constructor(
             openAiKit.supportedLanguagesAsSource,
             geminiKit.supportedLanguagesAsSource,
             claudeKit.supportedLanguagesAsSource,
-        ).partition { it.code.equals("auto", ignoreCase = true) }
+        ).map { language ->
+            // 화면 글자를 읽을 엔진이 없는 언어는 Claude 이미지 번역으로만 원문이 된다(§25) — 목록·엔진 전환이 Claude 만 보게 한다
+            if (!ImageTranslation.isImageOnlyLanguage(language.code)) language
+            else Language(language.code).apply { supportKitTypes.addAll(language.supportKitTypes.filter { it == TranslationKitType.CLAUDE }) }
+        }.partition { it.code.equals("auto", ignoreCase = true) }
 
         // 비-라틴 로케일 사용자에게는 표시명이 부실한 언어([Language.noDisplayNameList])를 목록 맨 아래로 정렬한다.
         // (현재 그 리스트는 비어 있어 결과적으로 전체 정렬과 동일하지만, 향후 확장을 위해 기제를 유지한다.)
@@ -125,7 +132,11 @@ class TranslationRepository @Inject constructor(
         }
     }
 
+    /** 화면 글자를 읽을 엔진이 없는 언어는 Claude 이미지 번역만 원문으로 받는다(§25). */
     fun isSupportedAsSource(kitType: TranslationKitType, code: String, targetLanguageCode: String): Boolean {
+        if (ImageTranslation.isImageOnlyLanguage(code) &&
+            (kitType != TranslationKitType.CLAUDE || !ImageTranslation.Switch.enabled)
+        ) return false
         return getTranslationKit(kitType).isSupportedAsSource(code, targetLanguageCode)
     }
 
@@ -133,10 +144,14 @@ class TranslationRepository @Inject constructor(
         return getTranslationKit(kitType).isSupportedAsTarget(code, sourceLanguageCode)
     }
 
-    /** 바꾸면 대상 언어가 원문이 되므로, 그 문자를 읽을 엔진이 없으면 바꿀 수 없다(§21). */
+    /**
+     * 바꾸면 대상 언어가 원문이 되므로, 그 문자를 읽을 엔진이 없으면 바꿀 수 없다(§21). 다만 Claude 이미지 번역 중이면 그 언어도 원문이 될 수
+     * 있다(§25).
+     */
     fun isLanguageSwappable(sourceLanguageCode: String, targetLanguageCode: String, kitType: TranslationKitType): Boolean {
-        return VisionKitSelector.hasReaderFor(targetLanguageCode) &&
-                getTranslationKit(kitType).isLanguageSwappable(sourceLanguageCode, targetLanguageCode)
+        val readable = !ImageTranslation.isImageOnlyLanguage(targetLanguageCode) ||
+                kitType == TranslationKitType.CLAUDE && ImageTranslation.Switch.enabled
+        return readable && getTranslationKit(kitType).isLanguageSwappable(sourceLanguageCode, targetLanguageCode)
     }
 
     suspend fun request(
@@ -153,6 +168,19 @@ class TranslationRepository @Inject constructor(
             contextText,
         )
     }
+
+    /** 이 번역을 Claude 이미지 번역으로 보내는가(§25). 키 확인이 암호화 저장소를 읽으므로 주 스레드 밖에서 본다. */
+    suspend fun usesImageTranslation(kitType: TranslationKitType, sourceLanguageCode: String): Boolean =
+        kitType == TranslationKitType.CLAUDE &&
+            withContext(Dispatchers.IO) { ImageTranslation.uses(kitType, sourceLanguageCode, claudeKit.available()) }
+
+    /** 화면 조각을 Claude 에 보내 읽기와 번역을 맡긴다(AI 이미지 번역, §25). 이 길은 Claude 만 있다. */
+    suspend fun requestImage(
+        sourceLanguageCode: String,
+        targetLanguageCode: String,
+        image: Bitmap,
+        mode: TextDetectMode,
+    ): TranslationResponse = claudeKit.requestImage(sourceLanguageCode, targetLanguageCode, image, mode)
 
     override fun onZeroReferences() {
     }

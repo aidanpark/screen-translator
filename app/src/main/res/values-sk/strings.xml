@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Vytvorte kľúč API v Anthropic Console. Používanie sa účtuje na váš účet Anthropic.</string>
     <string name="settings_menu_how_to_use">Návod na použitie</string>
     <string name="settings_menu_privacy_policy">Zásady ochrany osobných údajov</string>
-    <string name="source_language_no_screen_reader">Rozpoznávanie textu na obrazovke nie je podporované</string>
     <string name="ocr_model_preparing">Pripravuje sa prekladový modul. Chvíľu počkajte, prosím.</string>
     <string name="error_translate_invalid_key">Kľúč API je neplatný. Skontrolujte ho v nastaveniach.</string>
     <string name="error_translate_no_credit">Na účte nie sú kredity. Dobite ich v konzole poskytovateľa.</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">Komiks</string>
     <string name="translation_domain_tech">Technika</string>
     <string name="translation_domain_business">Biznis</string>
+  <string name="api_key_clear">Vymazať</string>
 </resources>
 
 

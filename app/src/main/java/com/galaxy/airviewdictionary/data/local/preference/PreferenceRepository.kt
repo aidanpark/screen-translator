@@ -1,6 +1,6 @@
 package com.galaxy.airviewdictionary.data.local.preference
 
-import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKitSelector
+import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
 import android.content.Context
 import android.speech.tts.Voice
 import androidx.datastore.core.DataStore
@@ -224,8 +224,11 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
     val sourceLanguageCodeFlow: Flow<String> = preferenceFlow.map { preferences ->
         Timber.tag(TAG).d(" preferences[SOURCE_LANGUAGE_CODE] ${preferences[SOURCE_LANGUAGE_CODE]} getCurrentLocale().language ${getCurrentLocale().language}")
         // 기본값은 auto(자동 감지). 소스 언어가 원문과 어긋나 OCR 인식기가 잘못 선택되는 문제를 방지한다.
-        // 화면 글자를 읽을 엔진이 없는 언어가 남아 있으면(예전에 고른 값) auto 로 읽는다(.docs/vision-engine-design.md §21).
-        (preferences[SOURCE_LANGUAGE_CODE] ?: "auto").takeIf { VisionKitSelector.hasReaderFor(it) } ?: "auto"
+        // 화면 글자를 읽을 엔진이 없는 언어는 Claude 이미지 번역으로만 원문이 된다 — 엔진이 Claude 가 아니거나 원격 스위치를 껐으면 auto 로
+        // 읽는다(.docs/vision-engine-design.md §21·§25). Claude 키를 지울 때는 설정이 저장값을 auto 로 바꾼다.
+        val code = preferences[SOURCE_LANGUAGE_CODE] ?: "auto"
+        val claude = safeEnumValueOf(preferences[TRANSLATION_KIT_TYPE], TranslationKitType.GOOGLE) == TranslationKitType.CLAUDE
+        code.takeIf { !ImageTranslation.isImageOnlyLanguage(it) || claude && ImageTranslation.Switch.enabled } ?: "auto"
     }
 
     val targetLanguageCodeFlow: Flow<String> = preferenceFlow.map { preferences ->

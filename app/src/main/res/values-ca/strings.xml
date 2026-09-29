@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Crea una clau API a l’Anthropic Console. L’ús es factura al teu compte d’Anthropic.</string>
     <string name="settings_menu_how_to_use">Com s\'utilitza</string>
     <string name="settings_menu_privacy_policy">Política de privadesa</string>
-    <string name="source_language_no_screen_reader">No s\'admet el reconeixement de text de la pantalla</string>
     <string name="ocr_model_preparing">S\'està preparant el motor de traducció. Espereu un moment.</string>
     <string name="error_translate_invalid_key">La clau API no és vàlida. Comprova-la a la configuració.</string>
     <string name="error_translate_no_credit">No queden crèdits al compte. Recarrega a la consola del proveïdor.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Còmic</string>
     <string name="translation_domain_tech">Tècnic</string>
     <string name="translation_domain_business">Negocis</string>
+  <string name="api_key_clear">Esborra</string>
 </resources>

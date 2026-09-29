@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Cipta kunci API dalam Anthropic Console. Penggunaan dikenakan bil kepada akaun Anthropic anda.</string>
     <string name="settings_menu_how_to_use">Cara penggunaan</string>
     <string name="settings_menu_privacy_policy">Dasar privasi</string>
-    <string name="source_language_no_screen_reader">Pengecaman teks skrin tidak disokong</string>
     <string name="ocr_model_preparing">Menyediakan enjin terjemahan. Sila tunggu sebentar.</string>
     <string name="error_translate_invalid_key">Kunci API tidak sah. Semak dalam Tetapan.</string>
     <string name="error_translate_no_credit">Tiada kredit dalam akaun. Tambah nilai di konsol penyedia.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Komik</string>
     <string name="translation_domain_tech">Teknikal</string>
     <string name="translation_domain_business">Perniagaan</string>
+  <string name="api_key_clear">Kosongkan</string>
 </resources>

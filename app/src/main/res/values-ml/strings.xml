@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console-ൽ ഒരു API കീ സൃഷ്‌ടിക്കുക. ഉപയോഗം നിങ്ങളുടെ Anthropic അക്കൗണ്ടിലേക്ക് ബില്ല് ചെയ്യുന്നു.</string>
     <string name="settings_menu_how_to_use">ഉപയോഗിക്കുന്ന വിധം</string>
     <string name="settings_menu_privacy_policy">സ്വകാര്യതാ നയം</string>
-    <string name="source_language_no_screen_reader">സ്ക്രീനിലെ ടെക്സ്റ്റ് തിരിച്ചറിയൽ പിന്തുണയ്ക്കുന്നില്ല</string>
     <string name="ocr_model_preparing">വിവർത്തന എൻജിൻ തയ്യാറാക്കുന്നു. അൽപ്പം കാത്തിരിക്കുക.</string>
     <string name="error_translate_invalid_key">API കീ അസാധുവാണ്. ക്രമീകരണങ്ങളിൽ പരിശോധിക്കുക.</string>
     <string name="error_translate_no_credit">അക്കൗണ്ടിൽ ക്രെഡിറ്റ് ബാക്കിയില്ല. ദാതാവിന്റെ കൺസോളിൽ ടോപ്പ്-അപ്പ് ചെയ്യുക.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">കോമിക്</string>
     <string name="translation_domain_tech">സാങ്കേതികം</string>
     <string name="translation_domain_business">ബിസിനസ്</string>
+  <string name="api_key_clear">മായ്ക്കുക</string>
 </resources>

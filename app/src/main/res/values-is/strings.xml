@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Búðu til API-lykil í Anthropic Console. Notkun er gjaldfærð á Anthropic-reikninginn þinn.</string>
     <string name="settings_menu_how_to_use">Notkunarleiðbeiningar</string>
     <string name="settings_menu_privacy_policy">Persónuverndarstefna</string>
-    <string name="source_language_no_screen_reader">Textagreining á skjá er ekki studd</string>
     <string name="ocr_model_preparing">Undirbý þýðingarvélina. Vinsamlegast bíddu augnablik.</string>
     <string name="error_translate_invalid_key">API-lykillinn er ógildur. Athugaðu hann í stillingum.</string>
     <string name="error_translate_no_credit">Engar inneignir eftir á reikningnum. Fylltu á í stjórnborði veitunnar.</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">Myndasaga</string>
     <string name="translation_domain_tech">Tæknilegt</string>
     <string name="translation_domain_business">Viðskipti</string>
+  <string name="api_key_clear">Hreinsa</string>
 </resources>
 
 

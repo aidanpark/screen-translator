@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Crea una clave API en Anthropic Console. El uso se factura a tu cuenta de Anthropic.</string>
     <string name="settings_menu_how_to_use">Cómo usar</string>
     <string name="settings_menu_privacy_policy">Política de privacidad</string>
-    <string name="source_language_no_screen_reader">No se admite el reconocimiento de texto en pantalla</string>
     <string name="ocr_model_preparing">Preparando el motor de traducción. Espera un momento.</string>
     <string name="error_translate_invalid_key">La clave de API no es válida. Compruébala en Ajustes.</string>
     <string name="error_translate_no_credit">No quedan créditos en tu cuenta. Recarga en la consola del proveedor.</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">Cómic</string>
     <string name="translation_domain_tech">Técnico</string>
     <string name="translation_domain_business">Negocios</string>
+  <string name="api_key_clear">Borrar</string>
 </resources>
 
 

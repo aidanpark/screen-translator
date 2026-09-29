@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Opret en API-nøgle i Anthropic Console. Forbrug faktureres til din Anthropic-konto.</string>
     <string name="settings_menu_how_to_use">Sådan bruges appen</string>
     <string name="settings_menu_privacy_policy">Privatlivspolitik</string>
-    <string name="source_language_no_screen_reader">Genkendelse af skærmtekst understøttes ikke</string>
     <string name="ocr_model_preparing">Oversættelsesmotoren forberedes. Vent et øjeblik.</string>
     <string name="error_translate_invalid_key">API-nøglen er ugyldig. Tjek den i Indstillinger.</string>
     <string name="error_translate_no_credit">Ingen kreditter tilbage på kontoen. Tank op i udbyderens konsol.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Tegneserie</string>
     <string name="translation_domain_tech">Teknisk</string>
     <string name="translation_domain_business">Forretning</string>
+  <string name="api_key_clear">Ryd</string>
 </resources>

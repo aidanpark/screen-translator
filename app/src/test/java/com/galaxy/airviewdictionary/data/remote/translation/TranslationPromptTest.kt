@@ -65,8 +65,12 @@ class TranslationPromptTest {
     }
 
     @Test
-    fun 자동감지와_지정언어의_문구가_다르다() {
-        assertTrue(prompt(source = null).contains("Detect the source language"))
+    fun 자동감지는_원문언어를_적지_않고_판정도_청하지_않는다() {
+        // 판정한 언어를 돌려받는 곳이 없다 — 돌려받던 것은 걷어낸 이미지 경로뿐이었다(§24.13).
+        val auto = prompt(source = null)
+        assertTrue(auto.contains("Translate the user's text into Korean."))
+        assertFalse(auto.contains("Detect"))
+        assertFalse(auto.contains(" from "))
         assertTrue(prompt(source = "English").contains("from English into Korean"))
     }
 

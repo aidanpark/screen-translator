@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Luo API-avain Anthropic Consolessa. Käyttö laskutetaan Anthropic-tililtäsi.</string>
     <string name="settings_menu_how_to_use">Käyttöohje</string>
     <string name="settings_menu_privacy_policy">Tietosuojakäytäntö</string>
-    <string name="source_language_no_screen_reader">Näytön tekstin tunnistusta ei tueta</string>
     <string name="ocr_model_preparing">Käännösmoottoria valmistellaan. Odota hetki.</string>
     <string name="error_translate_invalid_key">API-avain ei kelpaa. Tarkista se asetuksista.</string>
     <string name="error_translate_no_credit">Tilillä ei ole krediittejä. Lataa lisää palveluntarjoajan konsolissa.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Sarjakuva</string>
     <string name="translation_domain_tech">Tekninen</string>
     <string name="translation_domain_business">Liiketoiminta</string>
+  <string name="api_key_clear">Tyhjennä</string>
 </resources>

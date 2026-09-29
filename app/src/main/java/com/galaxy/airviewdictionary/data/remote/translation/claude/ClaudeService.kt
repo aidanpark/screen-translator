@@ -20,5 +20,11 @@ interface ClaudeService {
     ): ClaudeResponse
 }
 
-data class ClaudeResponse(val content: List<ClaudeContentBlock>?)
+data class ClaudeResponse(
+    val content: List<ClaudeContentBlock>?,
+    /** end_turn · max_tokens · refusal 등. 구조화 출력은 refusal·max_tokens 면 스키마를 지키지 못할 수 있다. */
+    val stop_reason: String? = null,
+    val usage: ClaudeUsage? = null,
+)
 data class ClaudeContentBlock(val type: String?, val text: String?)
+data class ClaudeUsage(val input_tokens: Int?, val output_tokens: Int?)

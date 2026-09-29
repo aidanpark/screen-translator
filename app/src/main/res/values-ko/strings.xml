@@ -72,7 +72,6 @@
   <string name="settings_menu_app_version_latest">(최신)</string>
   <string name="settings_menu_how_to_use">사용법 안내</string>
   <string name="settings_menu_privacy_policy">개인정보처리방침</string>
-  <string name="source_language_no_screen_reader">화면 글자 인식 미지원</string>
 
   <!-- HelpTextDetectModeView, HelpTranslationKitView -->
   <string name="help_text_no_limit_free">사용량 제한 없음, 기간 제한 없음</string>
@@ -124,4 +123,5 @@
     <string name="translation_domain_comic">만화</string>
     <string name="translation_domain_tech">기술</string>
     <string name="translation_domain_business">비즈니스</string>
+  <string name="api_key_clear">지우기</string>
 </resources>

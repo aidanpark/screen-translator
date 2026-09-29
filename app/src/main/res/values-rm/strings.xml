@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Creescha ina clav API en l’Anthropic Console. L’utilisaziun vegn fatgurada a tes conto Anthropic.</string>
     <string name="settings_menu_how_to_use">Co utilisar</string>
     <string name="settings_menu_privacy_policy">Decleraziun da protecziun da datas</string>
-    <string name="source_language_no_screen_reader">Renconuschientscha dal text sin il visur betg sustegnida</string>
     <string name="ocr_model_preparing">Il motor da translaziun vegn preparà. Spetgai in mument.</string>
     <string name="error_translate_invalid_key">La clav API n\'è betg valida. Controllai ella en ils parameters.</string>
     <string name="error_translate_no_credit">Nagins credits pli sin il conto. Chargiai en la consola dal purschider.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Comic</string>
     <string name="translation_domain_tech">Tecnic</string>
     <string name="translation_domain_business">Affars</string>
+  <string name="api_key_clear">Stizzar</string>
 </resources>

@@ -30,7 +30,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ScreenTranslator"
-        android:usesCleartextTraffic="true"
         tools:targetApi="tiramisu">
 
         <activity
@@ -72,10 +71,12 @@
             android:theme="@style/Theme.ScreenTranslator.Transparent" />
 
         <!-- taskAffinity="": 앱 메인 태스크(설정 화면이 백스택에 남아있을 수 있음)를 끌어올리지 않도록
-             광고 게이트는 항상 독립된 태스크에서 뜬다 -->
+             광고 게이트는 항상 독립된 태스크에서 뜬다.
+             configChanges: 광고를 보는 동안 다크 모드·글꼴 크기·멀티 윈도우 등이 바뀌어 게이트가 다시 만들어지면
+             광고 콜백은 옛 인스턴스로 가고 새 인스턴스는 안내 다이얼로그부터 다시 보인다. 화면은 Compose 라 재생성 없이 따라간다 -->
         <activity
             android:name=".ui.screen.ads.AdGateActivity"
-            android:configChanges="orientation|screenSize"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection|density|colorMode|fontWeightAdjustment|grammaticalGender"
             android:excludeFromRecents="true"
             android:exported="false"
             android:launchMode="singleTop"

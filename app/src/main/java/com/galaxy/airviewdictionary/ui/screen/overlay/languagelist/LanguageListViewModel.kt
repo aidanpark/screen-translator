@@ -1,17 +1,20 @@
 package com.galaxy.airviewdictionary.ui.screen.overlay.languagelist
 
-import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKitSelector
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.galaxy.airviewdictionary.data.local.preference.PreferenceRepository
+import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationRepository
 import com.galaxy.airviewdictionary.data.remote.translation.Language
+import com.galaxy.airviewdictionary.data.remote.translation.claude.ClaudeKit
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 
@@ -65,9 +68,12 @@ class LanguageListViewModel(
      * language 와 oppositeLanguage 는 반드시 공통의 TranslationKitType 을 가지고 있어야 한다.
      */
     fun updateLanguage(isSourceLanguage: Boolean, language: Language, oppositeLanguage: Language) {
-        // 화면 글자를 읽을 엔진이 없는 언어는 원문으로 고를 수 없다(목록에서도 비활성, §21).
-        if (isSourceLanguage && !VisionKitSelector.hasReaderFor(language.code)) return
         viewModelScope.launch {
+            // 화면 글자를 읽을 엔진이 없는 언어는 Claude 이미지 번역으로만 원문이 된다 — Claude 키가 있어야 한다(목록에서도 비활성, §25).
+            // 지원 엔진이 Claude 하나라 아래에서 엔진도 Claude 로 바뀐다
+            if (isSourceLanguage && ImageTranslation.isImageOnlyLanguage(language.code) &&
+                !(ImageTranslation.Switch.enabled && withContext(Dispatchers.IO) { ClaudeKit.getStoredApiKey(applicationContext) != null })
+            ) return@launch
             val kitType: TranslationKitType = preferenceRepository.translationKitTypeFlow.first()
             val commonKitTypes = mutableListOf<TranslationKitType>().apply {
                 if (language.supportKitTypes.contains(kitType) && oppositeLanguage.supportKitTypes.contains(kitType)) {

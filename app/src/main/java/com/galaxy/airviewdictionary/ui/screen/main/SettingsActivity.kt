@@ -3,6 +3,7 @@ package com.galaxy.airviewdictionary.ui.screen.main
 
 import android.annotation.SuppressLint
 import android.app.NotificationManager
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.core.net.toUri
@@ -65,12 +66,14 @@ import com.galaxy.airviewdictionary.data.remote.translation.TranslationStrength
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AllInclusive
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FiberNew
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VoiceChat
 import androidx.compose.material.icons.outlined.Api
 import androidx.compose.material.icons.outlined.CardGiftcard
+import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material3.Button
@@ -146,6 +149,7 @@ import com.galaxy.airviewdictionary.data.local.screen.ScreenInfoHolder
 import com.galaxy.airviewdictionary.data.local.preference.PreferenceRepository
 import com.galaxy.airviewdictionary.data.local.tts.TTSReadTarget
 import com.galaxy.airviewdictionary.data.local.vision.TextDetectMode
+import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
 import com.galaxy.airviewdictionary.data.remote.translation.claude.ClaudeKit
 import com.galaxy.airviewdictionary.data.remote.translation.deepl.DeepLKit
@@ -1485,23 +1489,35 @@ class SettingsActivity : AVDActivity() {
                                             }
                                         }
 
-                                        Crossfade(targetState = isToggled, label = "Crossfade") { toggled ->
-                                            val imageResource = if (toggled) R.drawable.tts_rate_0 else R.drawable.tts_rate_1
+                                        // 얼굴(테두리·눈)은 고정하고 입만 바꾼다. 두 그림 전체를 Crossfade 하면 겹치는 테두리·눈이
+                                        // 전환 중간에 옅어져(두 반투명 층 ≈ 75%) 깜빡이는 것처럼 보였다.
+                                        Box(
+                                            modifier = Modifier
+                                                .size(28.dp)
+                                                .semantics { contentDescription = getString(R.string.settings_menu_tts_rate) }
+                                                .onGloballyPositioned { layoutCoordinates ->
+                                                    val offset = layoutCoordinates.positionOnScreen()
+                                                    val startPadding = paddingValues
+                                                        .calculateLeftPadding(layoutDirection)
+                                                        .toPx(context)
+                                                    val posX = offset.x.toInt() - startPadding
+                                                    ttsSpeechRateIconOffset.value = Point(posX, offset.y.toInt())
+                                                }
+                                        ) {
                                             Image(
-                                                painter = painterResource(id = imageResource),
-                                                contentDescription = getString(R.string.settings_menu_tts_rate),
+                                                painter = painterResource(id = R.drawable.tts_rate_face),
+                                                contentDescription = null,
                                                 colorFilter = ColorFilter.tint(Color(0xFF848487)),
-                                                modifier = Modifier
-                                                    .size(28.dp)
-                                                    .onGloballyPositioned { layoutCoordinates ->
-                                                        val offset = layoutCoordinates.positionOnScreen()
-                                                        val startPadding = paddingValues
-                                                            .calculateLeftPadding(layoutDirection)
-                                                            .toPx(context)
-                                                        val posX = offset.x.toInt() - startPadding
-                                                        ttsSpeechRateIconOffset.value = Point(posX, offset.y.toInt())
-                                                    }
+                                                modifier = Modifier.fillMaxSize()
                                             )
+                                            Crossfade(targetState = isToggled, label = "Crossfade") { toggled ->
+                                                Image(
+                                                    painter = painterResource(id = if (toggled) R.drawable.tts_rate_mouth_0 else R.drawable.tts_rate_mouth_1),
+                                                    contentDescription = null,
+                                                    colorFilter = ColorFilter.tint(Color(0xFF848487)),
+                                                    modifier = Modifier.fillMaxSize()
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -1892,6 +1908,68 @@ class SettingsActivity : AVDActivity() {
         }
     }
 
+    /**
+     * AI 번역 엔진 설정 창의 API 키 입력칸. 비었을 때는 붙여넣기, 채워졌을 때는 지우기 아이콘을 끝에 둔다.
+     * 붙여넣은 키는 앞뒤 공백·줄바꿈을 뗀다(콘솔에서 복사할 때 딸려 오기 쉽다).
+     */
+    @Composable
+    private fun ApiKeyField(
+        value: String,
+        onValueChange: (String) -> Unit,
+        enabled: Boolean,
+        isError: Boolean,
+        contentColor: Color,
+        linkColor: Color,
+    ) {
+        val context = LocalContext.current
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(text = "API Key") },
+            singleLine = true,
+            enabled = enabled,
+            isError = isError,
+            trailingIcon = {
+                if (value.isEmpty()) {
+                    IconButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val pasted = clipboard.primaryClip?.takeIf { it.itemCount > 0 }
+                                ?.getItemAt(0)?.coerceToText(context)?.toString()?.trim()
+                            if (!pasted.isNullOrEmpty()) onValueChange(pasted)
+                        },
+                        enabled = enabled,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentPaste,
+                            contentDescription = stringResource(id = android.R.string.paste),
+                            modifier = Modifier.size(19.dp), // 기본 24dp 의 80%
+                        )
+                    }
+                } else {
+                    IconButton(
+                        onClick = { onValueChange("") },
+                        enabled = enabled,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Clear,
+                            contentDescription = stringResource(id = R.string.api_key_clear),
+                            modifier = Modifier.size(19.dp), // 기본 24dp 의 80%
+                        )
+                    }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = contentColor,
+                unfocusedTextColor = contentColor,
+                focusedBorderColor = linkColor,
+                focusedLabelColor = linkColor,
+                cursorColor = linkColor,
+            ),
+        )
+    }
+
     @Composable
     private fun ModelDropdownField(
         label: String,
@@ -2090,24 +2168,16 @@ class SettingsActivity : AVDActivity() {
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                OutlinedTextField(
+                ApiKeyField(
                     value = apiKeyInput,
                     onValueChange = {
                         apiKeyInput = it
                         showInvalidKeyError = false
                     },
-                    label = { Text(text = "API Key") },
-                    singleLine = true,
                     enabled = !isValidating,
                     isError = showInvalidKeyError,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = contentColor,
-                        unfocusedTextColor = contentColor,
-                        focusedBorderColor = linkColor,
-                        focusedLabelColor = linkColor,
-                        cursorColor = linkColor,
-                    ),
+                    contentColor = contentColor,
+                    linkColor = linkColor,
                 )
 
                 if (showInvalidKeyError) {
@@ -2331,24 +2401,16 @@ class SettingsActivity : AVDActivity() {
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                OutlinedTextField(
+                ApiKeyField(
                     value = apiKeyInput,
                     onValueChange = {
                         apiKeyInput = it
                         showInvalidKeyError = false
                     },
-                    label = { Text(text = "API Key") },
-                    singleLine = true,
                     enabled = !isValidating,
                     isError = showInvalidKeyError,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = contentColor,
-                        unfocusedTextColor = contentColor,
-                        focusedBorderColor = linkColor,
-                        focusedLabelColor = linkColor,
-                        cursorColor = linkColor,
-                    ),
+                    contentColor = contentColor,
+                    linkColor = linkColor,
                 )
 
                 if (showInvalidKeyError) {
@@ -2617,24 +2679,16 @@ class SettingsActivity : AVDActivity() {
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                OutlinedTextField(
+                ApiKeyField(
                     value = apiKeyInput,
                     onValueChange = {
                         apiKeyInput = it
                         showInvalidKeyError = false
                     },
-                    label = { Text(text = "API Key") },
-                    singleLine = true,
                     enabled = !isValidating,
                     isError = showInvalidKeyError,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = contentColor,
-                        unfocusedTextColor = contentColor,
-                        focusedBorderColor = linkColor,
-                        focusedLabelColor = linkColor,
-                        cursorColor = linkColor,
-                    ),
+                    contentColor = contentColor,
+                    linkColor = linkColor,
                 )
 
                 if (showInvalidKeyError) {
@@ -2795,6 +2849,10 @@ class SettingsActivity : AVDActivity() {
                     if (viewModel.preferenceRepository.translationKitTypeFlow.first() == TranslationKitType.CLAUDE) {
                         viewModel.preferenceRepository.update(PreferenceRepository.TRANSLATION_KIT_TYPE, TranslationKitType.GOOGLE.name)
                     }
+                    // Claude 이미지 번역으로만 원문이 되는 언어였으면 auto 로 바꾼다(§25, 사용자 결정)
+                    if (ImageTranslation.isImageOnlyLanguage(viewModel.preferenceRepository.sourceLanguageCodeFlow.first())) {
+                        viewModel.preferenceRepository.update(PreferenceRepository.SOURCE_LANGUAGE_CODE, "auto")
+                    }
                 }
                 onDismissRequest()
                 return
@@ -2903,24 +2961,16 @@ class SettingsActivity : AVDActivity() {
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                OutlinedTextField(
+                ApiKeyField(
                     value = apiKeyInput,
                     onValueChange = {
                         apiKeyInput = it
                         showInvalidKeyError = false
                     },
-                    label = { Text(text = "API Key") },
-                    singleLine = true,
                     enabled = !isValidating,
                     isError = showInvalidKeyError,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = contentColor,
-                        unfocusedTextColor = contentColor,
-                        focusedBorderColor = linkColor,
-                        focusedLabelColor = linkColor,
-                        cursorColor = linkColor,
-                    ),
+                    contentColor = contentColor,
+                    linkColor = linkColor,
                 )
 
                 if (showInvalidKeyError) {

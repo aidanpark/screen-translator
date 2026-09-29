@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">በAnthropic Console ውስጥ የAPI ቁልፍ ይፍጠሩ። አጠቃቀም ወደ Anthropic መለያዎ ይከፈላል።</string>
     <string name="settings_menu_how_to_use">አጠቃቀም መመሪያ</string>
     <string name="settings_menu_privacy_policy">የግላዊነት መመሪያ</string>
-    <string name="source_language_no_screen_reader">የማያ ገጽ ጽሑፍ ማወቂያ አይደገፍም</string>
     <string name="ocr_model_preparing">የትርጉም ሞተሩ በመዘጋጀት ላይ ነው። እባክዎ ትንሽ ይጠብቁ።</string>
     <string name="error_translate_invalid_key">የAPI ቁልፉ ልክ አይደለም። በቅንብሮች ውስጥ ያረጋግጡ።</string>
     <string name="error_translate_no_credit">በመለያዎ ላይ ክሬዲት የለም። በአቅራቢው ኮንሶል ውስጥ ይሙሉ።</string>
@@ -121,5 +120,6 @@
     <string name="translation_domain_comic">ኮሚክ</string>
     <string name="translation_domain_tech">ቴክኒካዊ</string>
     <string name="translation_domain_business">ንግድ</string>
+  <string name="api_key_clear">አጽዳ</string>
 </resources>
 

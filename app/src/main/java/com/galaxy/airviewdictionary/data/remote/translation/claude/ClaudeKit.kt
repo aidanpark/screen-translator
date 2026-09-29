@@ -1,11 +1,17 @@
 package com.galaxy.airviewdictionary.data.remote.translation.claude
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.util.Base64
+import androidx.annotation.VisibleForTesting
+import com.galaxy.airviewdictionary.data.local.vision.TextDetectMode
 import com.galaxy.airviewdictionary.data.local.preference.PreferenceRepository
 import com.galaxy.airviewdictionary.data.local.secure.SecureStore
 import com.galaxy.airviewdictionary.data.local.secure.SecureStoreKey
 import com.galaxy.airviewdictionary.data.remote.firebase.RemoteConfigRepository
+import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
 import com.galaxy.airviewdictionary.data.remote.translation.Language
+import com.galaxy.airviewdictionary.data.remote.translation.NoTextInImageException
 import com.galaxy.airviewdictionary.data.remote.translation.Transaction
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKit
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
@@ -30,6 +36,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -103,7 +110,12 @@ class ClaudeKit @Inject constructor(
     /**
      * 사용할 모델. 설정에서 고른 값이 있고 현재 후보에 있으면 그것을, 아니면 후보의 첫 번째를, 그마저 없으면 기본값.
      */
+    /** 기기 실측 시험이 원격 목록 밖의 모델을 잴 때 쓴다(`ClaudeImageLiveTest`). 앱은 쓰지 않는다. */
+    @VisibleForTesting
+    var modelOverride: String? = null
+
     private suspend fun resolveModel(): String {
+        modelOverride?.let { return it }
         val chosen = preferenceRepository.claudeModelFlow.first()?.takeIf { it.isNotBlank() }
         val candidates = remoteConfigRepository.getClaudeTranslateModels()
         return when {
@@ -167,7 +179,7 @@ class ClaudeKit @Inject constructor(
                     targetLanguageCode = targetLanguageCode,
                     sourceText = sourceText,
                     translationKitType = TranslationKitType.CLAUDE,
-                    // 텍스트 경로는 언어를 판정하지 않는다. 지정 번역이면 그 언어가 곧 원문 언어다.
+                    // AI 엔진은 원문 언어를 돌려주지 않는다. 지정 번역이면 그 언어가 곧 원문 언어다.
                     resolvedSourceLanguageCode = sourceLanguageCode.takeIf { it != "auto" },
                     resultText = cleanOutput(raw),
                     modelName = model,
@@ -181,6 +193,100 @@ class ClaudeKit @Inject constructor(
             Timber.tag(TAG).w("request error: ${e.message}")
             TranslationResponse.Error(e)
         }
+    }
+
+    /**
+     * 화면 조각을 보내 읽기와 번역을 함께 맡긴다(AI 이미지 번역, `.docs/vision-engine-design.md` §25). [image] 는 `ImageCrop` 이 만든 조각이고,
+     * [mode] 가 포인터 모드면 그 안에 포인터 표시가 그려져 있다. [sourceLanguageCode] 가 auto 면 모델이 판정한 언어도 돌려받는다.
+     *
+     * 응답은 구조화 출력(JSON 스키마)으로 받는다 — 앞머리 채우기(prefill)는 지금 모델(Sonnet 5, Opus 5 …)에서 400 이다. 스키마를 지원하지 않는
+     * 모델을 Remote Config 목록에 넣으면 이 요청이 실패한다(지금 목록 Haiku 4.5·Sonnet 5·Opus 5 는 모두 지원). 문맥 글은 보내지 않는다 —
+     * 조각에 주변 글이 이미 들어 있다. 글이 없다는 답이면 [NoTextInImageException].
+     */
+    suspend fun requestImage(
+        sourceLanguageCode: String,
+        targetLanguageCode: String,
+        image: Bitmap,
+        mode: TextDetectMode,
+    ): TranslationResponse {
+        return try {
+            val apiKey = getStoredApiKey(context) ?: throw IllegalStateException("Claude API key is not set.")
+            val model = resolveModel()
+            val strength = preferenceRepository.claudeTranslationStrengthFlow.first()
+            val domain = preferenceRepository.claudeTranslationDomainFlow.first()
+            val auto = sourceLanguageCode.equals("auto", ignoreCase = true)
+
+            val encodeStart = System.nanoTime()
+            val imageBase64 = withContext(Dispatchers.Default) { image.toJpegBase64() }
+            val encodeMs = (System.nanoTime() - encodeStart) / 1_000_000
+
+            val requestBody = mapOf(
+                "model" to model,
+                "max_tokens" to 4096,
+                // temperature·effort 는 텍스트 요청과 같은 이유로 보내지 않는다(위 request 참고)
+                "system" to ImageTranslation.systemPrompt(
+                    sourceLanguageName = if (auto) null else ImageTranslation.englishName(sourceLanguageCode),
+                    targetLanguageName = ImageTranslation.englishName(targetLanguageCode),
+                    strength = strength,
+                    domain = domain,
+                    mode = mode,
+                ),
+                "output_config" to mapOf(
+                    "format" to mapOf("type" to "json_schema", "schema" to ImageTranslation.responseSchema(auto)),
+                ),
+                "messages" to listOf(
+                    mapOf(
+                        "role" to "user",
+                        "content" to listOf(
+                            mapOf(
+                                "type" to "image",
+                                "source" to mapOf("type" to "base64", "media_type" to "image/jpeg", "data" to imageBase64),
+                            )
+                        ),
+                    )
+                ),
+            )
+            val json = Gson().toJson(requestBody).toRequestBody("application/json".toMediaType())
+            val callStart = System.nanoTime()
+            val response = withContext(Dispatchers.IO) { service.messages(apiKey, json) }
+            val callMs = (System.nanoTime() - callStart) / 1_000_000
+            // 이 경로의 성패는 지연과 토큰 비용에서 갈린다(§25). 릴리스에서는 R8 이 걷어낸다
+            Timber.tag(TAG).i(
+                "image request: ${image.width}x${image.height} jpeg=${imageBase64.length / 1024}KB encode=${encodeMs}ms call=${callMs}ms" +
+                    " in=${response.usage?.input_tokens} out=${response.usage?.output_tokens} stop=${response.stop_reason} mode=$mode model=$model"
+            )
+            if (response.stop_reason == "refusal") throw IllegalStateException("Claude declined to read the image.")
+            // 생각(thinking) 블록이 앞에 올 수 있다 — 첫 text 블록이 JSON 이다
+            val raw = response.content?.firstOrNull { it.type == "text" }?.text.orEmpty()
+            val reading = ImageTranslation.parse(raw)
+                ?: throw IllegalStateException("Unexpected reply (${response.stop_reason}): ${raw.take(120)}")
+            if (reading.isEmpty) throw NoTextInImageException()
+
+            TranslationResponse.Success(
+                Transaction(
+                    targetLanguageCode = targetLanguageCode,
+                    // 모델이 조각에서 직접 읽은 원문 — 번역창과 TTS 가 이것을 쓴다
+                    sourceText = reading.source.takeIf { it.isNotBlank() },
+                    translationKitType = TranslationKitType.CLAUDE,
+                    // auto 면 모델이 판정한 언어, 원문 언어를 골랐으면 그 언어
+                    resolvedSourceLanguageCode = if (auto) reading.language else sourceLanguageCode,
+                    resultText = reading.translation,
+                    modelName = model,
+                )
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(TAG).w("image request error: ${e.message}")
+            TranslationResponse.Error(e)
+        }
+    }
+
+    /** 화면 캡처는 사진이 아니라 UI 라, 품질을 조금 낮춰도 글자 가독성은 유지된다. PNG 보다 훨씬 작다. */
+    private fun Bitmap.toJpegBase64(): String {
+        val stream = ByteArrayOutputStream()
+        compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, stream)
+        return Base64.encodeToString(stream.toByteArray(), Base64.NO_WRAP)
     }
 
     /** LLM 이 종종 붙이는 코드펜스/따옴표/여백을 정리한다. */
@@ -210,7 +316,10 @@ class ClaudeKit @Inject constructor(
     companion object {
         const val BASE_URL = "https://api.anthropic.com/"
 
-        const val DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+        /** 원격 목록을 못 읽을 때의 모델 — 목록의 첫째와 같게 둔다(`remote_config_defaults.xml` 의 translate_models). */
+        const val DEFAULT_MODEL = "claude-sonnet-5-5"
+
+        private const val JPEG_QUALITY = 85
 
         // Claude API 키 발급/사용량 안내 링크
         const val URL_API_KEYS = "https://console.anthropic.com/settings/keys"

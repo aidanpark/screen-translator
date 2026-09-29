@@ -47,6 +47,9 @@ class RemoteConfigRepository @Inject constructor(@ApplicationContext val context
         // PADDLE_OCR_AUTO_ENABLED 를 끄면 auto 에서만 PP-OCRv5 표본을 돌리지 않는다.
         const val PADDLE_OCR_ENABLED = "paddle_ocr_enabled"
         const val PADDLE_OCR_AUTO_ENABLED = "paddle_ocr_auto_enabled"
+
+        // CLAUDE_IMAGE_ENABLED 를 끄면 Claude 도 OCR 글을 번역한다 — 화면 이미지를 보내지 않는다(§25).
+        const val CLAUDE_IMAGE_ENABLED = "claude_image_enabled"
     }
 
     /**

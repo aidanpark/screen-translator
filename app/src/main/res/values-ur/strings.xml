@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console میں ایک API کلید بنائیں۔ استعمال آپ کے Anthropic اکاؤنٹ پر بل کیا جاتا ہے۔</string>
     <string name="settings_menu_how_to_use">استعمال کا طریقہ</string>
     <string name="settings_menu_privacy_policy">رازداری کی پالیسی</string>
-    <string name="source_language_no_screen_reader">اسکرین متن کی شناخت معاون نہیں ہے</string>
     <string name="ocr_model_preparing">ترجمے کا انجن تیار ہو رہا ہے۔ براہ کرم تھوڑا انتظار کریں۔</string>
     <string name="error_translate_invalid_key">API کلید غلط ہے۔ ترتیبات میں چیک کریں۔</string>
     <string name="error_translate_no_credit">اکاؤنٹ میں کریڈٹ نہیں بچا۔ فراہم کنندہ کے کنسول میں ری چارج کریں۔</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">کامک</string>
     <string name="translation_domain_tech">تکنیکی</string>
     <string name="translation_domain_business">کاروبار</string>
+  <string name="api_key_clear">صاف کریں</string>
 </resources>

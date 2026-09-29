@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console’da bir API anahtarı oluşturun. Kullanım, Anthropic hesabınıza faturalandırılır.</string>
   <string name="settings_menu_how_to_use">Kullanım kılavuzu</string>
   <string name="settings_menu_privacy_policy">Gizlilik Politikası</string>
-  <string name="source_language_no_screen_reader">Ekran metni tanıma desteklenmiyor</string>
   <string name="ocr_model_preparing">Çeviri motoru hazırlanıyor. Lütfen biraz bekleyin.</string>
   <string name="error_translate_invalid_key">API anahtarı geçersiz. Ayarlardan kontrol edin.</string>
   <string name="error_translate_no_credit">Hesabınızda kredi kalmadı. Sağlayıcının konsolundan yükleyin.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Çizgi roman</string>
     <string name="translation_domain_tech">Teknik</string>
     <string name="translation_domain_business">İş</string>
+  <string name="api_key_clear">Temizle</string>
 </resources>

@@ -42,7 +42,12 @@ import com.galaxy.airviewdictionary.extensions.setFromPoints
 import com.galaxy.airviewdictionary.extensions.vibrate
 import com.galaxy.airviewdictionary.data.remote.translation.Language
 import com.galaxy.airviewdictionary.data.local.capture.CaptureResponse
+import com.galaxy.airviewdictionary.data.local.vision.model.ImageTargets
+import com.galaxy.airviewdictionary.data.local.vision.model.Transaction
 import com.galaxy.airviewdictionary.data.local.vision.model.VisionResponse
+import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrText
+import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
+import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
 import com.galaxy.airviewdictionary.ui.screen.overlay.OverlayView
 import com.galaxy.airviewdictionary.ui.screen.overlay.targethandle.TargetHandleViewModel
 import com.galaxy.airviewdictionary.ui.screen.overlay.targethandle.TranslateStatus
@@ -354,15 +359,25 @@ open class AreaSelectionView : OverlayView() {
                 return@launchInOverlayViewCoroutineScope
             }
 
+            val sourceLanguageCode: String = targetHandleViewModel.preferenceRepository.sourceLanguageCodeFlow.first()
+            val translationKitType: TranslationKitType = targetHandleViewModel.preferenceRepository.translationKitTypeFlow.first()
+            if (targetHandleViewModel.translationRepository.usesImageTranslation(translationKitType, sourceLanguageCode)) {
+                // AI 이미지 번역 — 읽지 않고 영역을 그대로 보낸다(§25)
+                targetHandleViewModel.visionResultFlow.value = Transaction(
+                    captureResponse.bitmap, OcrText("", emptyList()), sourceLanguageCode, emptyList(), image = ImageTargets.Area(Rect(selectedArea)),
+                )
+                return@launchInOverlayViewCoroutineScope
+            }
+
             // 영역선택 이미지
             val selectedAreaBitmap = createOverlaidBitmap(captureResponse.bitmap, selectedArea)
 
             // Test 캡처 이미지 확인
 
-            val sourceLanguageCode: String = targetHandleViewModel.preferenceRepository.sourceLanguageCodeFlow.first()
             val visionResponse: VisionResponse = targetHandleViewModel.visionRepository.request(
                 bitmap = selectedAreaBitmap,
-                sourceLanguageCode = sourceLanguageCode,
+                // 읽을 엔진이 없는 언어인데 이미지 번역을 못 하면(원격 스위치를 껐다) auto 로 읽는다
+                sourceLanguageCode = if (ImageTranslation.isImageOnlyLanguage(sourceLanguageCode)) "auto" else sourceLanguageCode,
                 // 영역 안의 글 전체가 필요하다 — 검출만 하고 멈추지 않는다.
                 readAll = true,
             )

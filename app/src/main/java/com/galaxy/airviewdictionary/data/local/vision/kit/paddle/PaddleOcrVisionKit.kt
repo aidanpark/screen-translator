@@ -26,6 +26,8 @@ class PaddleOcrVisionKit internal constructor(
     private val recognizer: PaddleRecognizer,
 ) : VisionKit {
 
+    override val linesFromDetector: Boolean get() = true
+
     @Volatile
     private var ready = false
 
@@ -45,7 +47,10 @@ class PaddleOcrVisionKit internal constructor(
         OcrText("", boxes.map { box -> OcrBlock(box, listOf(OcrLine(box, "", null, null))) })
     }
 
-    /** 줄 넷을 동시에 읽는다(세션 스레드 2) — 한 줄씩(스레드 4)보다 문단 한 개가 1.85배 빠르다(실측 §12). 순서는 그대로다. */
+    /**
+     * 줄 넷을 동시에 읽는다(세션 스레드 2) — 한 줄씩(스레드 4)보다 문단 한 개가 1.85배 빠르다(실측 §12). 순서는 그대로다.
+     * 취소되면 아직 시작하지 않은 줄은 건너뛰고 도는 줄의 추론은 멈춘다([terminable]).
+     */
     override suspend fun recognize(screen: Bitmap, lines: List<OcrLine>): List<OcrLine> = withContext(readers) {
         coroutineScope {
             lines.map { line ->
@@ -56,7 +61,7 @@ class PaddleOcrVisionKit internal constructor(
                     when {
                         line.words != null -> line
                         box == null || box.isEmpty -> line.copy(words = emptyList())
-                        else -> recognizer.read(screen, box)
+                        else -> terminable { options -> recognizer.read(screen, box, options) }
                     }
                 }
             }.awaitAll()

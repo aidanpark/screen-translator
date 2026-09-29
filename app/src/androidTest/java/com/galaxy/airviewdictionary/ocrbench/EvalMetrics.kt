@@ -1,6 +1,7 @@
 package com.galaxy.airviewdictionary.ocrbench
 
 import android.graphics.Rect
+import com.galaxy.airviewdictionary.data.local.vision.AssemblyParams
 import com.galaxy.airviewdictionary.data.local.vision.VisionRepository
 import com.galaxy.airviewdictionary.data.local.vision.WritingDirection
 import com.galaxy.airviewdictionary.data.local.vision.model.Line
@@ -101,8 +102,8 @@ object EvalMetrics {
     )
 
     /**
-     * 표본 하나를 프로덕션과 똑같이 조립한다. 상수 적용도 여기서 한다 — 세로 분기는 한 화면
-     * 안에서 세로 부분과 가로 부분에 기준값을 따로 적용하므로 호출부에서 한 번 적용해서는
+     * 표본 하나를 프로덕션과 똑같이 조립한다. 기준값도 여기서 만든다 — 세로 분기는 한 화면
+     * 안에서 세로 부분과 가로 부분에 기준값을 따로 쓰므로 호출부에서 한 벌을 넘겨서는
      * 재현되지 않는다.
      */
     fun run(
@@ -120,9 +121,9 @@ object EvalMetrics {
         val pieceOf = java.util.IdentityHashMap<com.galaxy.airviewdictionary.data.local.vision.model.Word, Line>()
 
         fun addHorizontal(words: List<com.galaxy.airviewdictionary.data.local.vision.model.Word>,
-                          direction: WritingDirection) {
-            val lines = repository.groupWordsIntoLines(words, direction)
-            var grouped = repository.groupLinesIntoParagraphs(lines, direction)
+                          direction: WritingDirection, params: AssemblyParams) {
+            val lines = repository.groupWordsIntoLines(words, direction, params)
+            var grouped = repository.groupLinesIntoParagraphs(lines, direction, params)
             if (post) grouped = grouped.flatMap {
                 repository.correctDetectAndSplitParagraphs(
                     repository.detectAndSplitParagraphs(it, direction), direction
@@ -132,15 +133,15 @@ object EvalMetrics {
             for (p in grouped) { paragraphs.add(p); directions.add(direction); lineUnits.add(false) }
         }
 
-        fun addLines(lines: List<Line>, direction: WritingDirection, vertical: Boolean) {
+        fun addLines(lines: List<Line>, direction: WritingDirection, vertical: Boolean, params: AssemblyParams) {
             // 세로 분기는 프로덕션처럼 열 조각을 먼저 잇는다(스위치가 꺼져 있으면 그대로). 채점 단위는 잇기 전
             // 조각이다 — 이은 줄은 조각의 단어 객체를 담으므로 아래 paragraphUnits 가 단어로 조각을 되찾는다.
             for (piece in lines) for (word in piece.words) pieceOf[word] = piece
-            val assembled = if (vertical) repository.mergeColumnPieces(lines, direction) else lines
-            var grouped = repository.groupLinesIntoParagraphs(assembled, direction)
+            val assembled = if (vertical) repository.mergeColumnPieces(lines, direction, params) else lines
+            var grouped = repository.groupLinesIntoParagraphs(assembled, direction, params)
             // 세로 분기는 쪼개기만 하고 다시 합치지 않는다. 가로 경로는 쪼갠 뒤 다시 합친다.
             if (post) grouped = grouped.flatMap {
-                if (vertical && !repository.VERTICAL_SPLIT) return@flatMap listOf(it)
+                if (vertical && !params.VERTICAL_SPLIT) return@flatMap listOf(it)
                 val split = repository.detectAndSplitParagraphs(it, direction)
                 if (vertical) split else repository.correctDetectAndSplitParagraphs(split, direction)
             }
@@ -149,22 +150,14 @@ object EvalMetrics {
         }
 
         when (sample.input) {
-            InputUnit.WORDS -> {
-                setting.applyTo(repository, sample)
-                addHorizontal(sample.buildWords(), sample.direction)
-            }
-            InputUnit.LINES -> {
-                // 검출기가 준 줄을 그대로 신뢰한다 — 단어→줄 단계를 지나가지 않는다.
-                setting.applyTo(repository, sample)
-                addLines(sample.buildLines(), sample.direction, sample.isVertical)
-            }
+            InputUnit.WORDS -> addHorizontal(sample.buildWords(), sample.direction, setting.paramsFor(sample))
+            // 검출기가 준 줄을 그대로 신뢰한다 — 단어→줄 단계를 지나가지 않는다.
+            InputUnit.LINES -> addLines(sample.buildLines(), sample.direction, sample.isVertical, setting.paramsFor(sample))
             InputUnit.VSPLIT -> {
                 // textToVerticalParagraphs 와 같다. 세로로 긴 줄은 세로 경로로 먼저,
                 // 나머지 단어는 가로 경로로. 기준값도 부분마다 따로 채운다.
-                setting.applyTo(repository, sample, vertical = true)
-                addLines(sample.buildVerticalLines(), sample.direction, vertical = true)
-                setting.applyTo(repository, sample, vertical = false)
-                addHorizontal(sample.buildWords(), sample.horizontalDirection)
+                addLines(sample.buildVerticalLines(), sample.direction, vertical = true, setting.paramsFor(sample, vertical = true))
+                addHorizontal(sample.buildWords(), sample.horizontalDirection, setting.paramsFor(sample, vertical = false))
             }
         }
 

@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Erstellen Sie einen API-Schlüssel in der Anthropic Console. Die Nutzung wird Ihrem Anthropic-Konto in Rechnung gestellt.</string>
   <string name="settings_menu_how_to_use">Bedienungsanleitung</string>
   <string name="settings_menu_privacy_policy">Datenschutzerklärung</string>
-  <string name="source_language_no_screen_reader">Texterkennung auf dem Bildschirm nicht unterstützt</string>
   <string name="ocr_model_preparing">Die Übersetzungs-Engine wird vorbereitet. Bitte einen Moment warten.</string>
   <string name="error_translate_invalid_key">Der API-Schlüssel ist ungültig. Prüfe ihn in den Einstellungen.</string>
   <string name="error_translate_no_credit">Kein Guthaben mehr auf dem Konto. Lade es in der Konsole des Anbieters auf.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Comic</string>
     <string name="translation_domain_tech">Technik</string>
     <string name="translation_domain_business">Business</string>
+  <string name="api_key_clear">Löschen</string>
 </resources>

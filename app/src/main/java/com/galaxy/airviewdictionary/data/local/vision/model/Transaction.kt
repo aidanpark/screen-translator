@@ -1,6 +1,7 @@
 package com.galaxy.airviewdictionary.data.local.vision.model
 
 import android.graphics.Bitmap
+import android.graphics.Rect
 import com.galaxy.airviewdictionary.data.local.vision.UnreadParagraphs
 import com.galaxy.airviewdictionary.data.local.vision.WritingDirection
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrText
@@ -14,6 +15,8 @@ data class Transaction(
     val paragraphs: List<Paragraph>,
     /** 검출만 된 화면이면 있다. 다 읽힌 화면(ML Kit)은 null. */
     val unread: UnreadParagraphs? = null,
+    /** AI 이미지 번역으로 보낼 화면이면 번역 대상을 찾는 방법(`.docs/vision-engine-design.md` §25). 글을 번역하면 null. */
+    val image: ImageTargets? = null,
 ) {
 
     /** 글이 있는 문단. 검출만 된 화면이면 지금까지 읽은 것만, 화면의 문단 순서대로. */
@@ -34,6 +37,19 @@ data class Transaction(
                 "detectedLanguageCode=$detectedLanguageCode, " +
                 "result=$paragraphs, " +
                 "unread=${unread != null}, " +
+                "image=$image, " +
                 ")"
     }
+}
+/** AI 이미지 번역(§25)의 대상 찾기. 글을 읽지 않으므로 단어 위치는 모른다 — 번역할 단어·문장·문단은 모델이 표시를 보고 고른다. */
+sealed interface ImageTargets {
+
+    /** PP-OCRv5 검출기 줄 — 단어 모드는 포인터 아래 줄, 문장·문단 모드는 그 문단. [Transaction.paragraphs] 는 줄 상자를 묶은 것이다(글 없음). */
+    data object Detected : ImageTargets
+
+    /** 모델 팩(PP-OCRv5)이 아직 없다 — 포인터 위아래 고정 높이의 띠. */
+    data object PointerBand : ImageTargets
+
+    /** 영역 선택의 영역 전체. */
+    data class Area(val rect: Rect) : ImageTargets
 }

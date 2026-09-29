@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console’до API ачкычын түзүңүз. Колдонуу Anthropic эсебиңизге эсептелет.</string>
     <string name="settings_menu_how_to_use">Колдонуу жолу</string>
     <string name="settings_menu_privacy_policy">Купуялык саясаты</string>
-    <string name="source_language_no_screen_reader">Экрандагы текстти таануу колдоого алынбайт</string>
     <string name="ocr_model_preparing">Котормо кыймылдаткычы даярдалууда. Бир аз күтө туруңуз.</string>
     <string name="error_translate_invalid_key">API ачкычы жараксыз. Аны жөндөөлөрдөн текшериңиз.</string>
     <string name="error_translate_no_credit">Аккаунтта кредит калган жок. Провайдердин консолунан толтуруңуз.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Комикс</string>
     <string name="translation_domain_tech">Техникалык</string>
     <string name="translation_domain_business">Бизнес</string>
+  <string name="api_key_clear">Тазалоо</string>
 </resources>

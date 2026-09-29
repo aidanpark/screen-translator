@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Направите API кључ у Anthropic Console. Коришћење се наплаћује на ваш Anthropic налог.</string>
     <string name="settings_menu_how_to_use">Како се користи</string>
     <string name="settings_menu_privacy_policy">Политика приватности</string>
-    <string name="source_language_no_screen_reader">Препознавање текста на екрану није подржано</string>
     <string name="ocr_model_preparing">Припрема се преводилачки мотор. Сачекајте тренутак.</string>
     <string name="error_translate_invalid_key">API кључ је неважећи. Проверите га у подешавањима.</string>
     <string name="error_translate_no_credit">Нема кредита на налогу. Допуните у конзоли добављача.</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">Стрип</string>
     <string name="translation_domain_tech">Техника</string>
     <string name="translation_domain_business">Пословно</string>
+  <string name="api_key_clear">Обриши</string>
 </resources>
 
 

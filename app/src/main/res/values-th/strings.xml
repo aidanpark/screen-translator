@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">สร้างคีย์ API ใน Anthropic Console การใช้งานจะถูกเรียกเก็บเงินไปยังบัญชี Anthropic ของคุณ</string>
   <string name="settings_menu_how_to_use">วิธีใช้งาน</string>
   <string name="settings_menu_privacy_policy">นโยบายความเป็นส่วนตัว</string>
-  <string name="source_language_no_screen_reader">ไม่รองรับการจดจำข้อความบนหน้าจอ</string>
   <string name="ocr_model_preparing">กำลังเตรียมเอนจินแปลภาษา โปรดรอสักครู่</string>
   <string name="error_translate_invalid_key">คีย์ API ไม่ถูกต้อง ตรวจสอบในการตั้งค่า</string>
   <string name="error_translate_no_credit">ไม่มีเครดิตในบัญชี เติมได้ที่คอนโซลของผู้ให้บริการ</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">การ์ตูน</string>
     <string name="translation_domain_tech">เทคนิค</string>
     <string name="translation_domain_business">ธุรกิจ</string>
+  <string name="api_key_clear">ล้าง</string>
 </resources>

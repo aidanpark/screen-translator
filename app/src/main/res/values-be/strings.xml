@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Стварыце ключ API у Anthropic Console. Выкарыстанне тарыфікуецца на ваш рахунак Anthropic.</string>
     <string name="settings_menu_how_to_use">Як карыстацца</string>
     <string name="settings_menu_privacy_policy">Палітыка прыватнасці</string>
-    <string name="source_language_no_screen_reader">Распазнаванне тэксту на экране не падтрымліваецца</string>
     <string name="ocr_model_preparing">Ідзе падрыхтоўка рухавіка перакладу. Калі ласка, пачакайце.</string>
     <string name="error_translate_invalid_key">Ключ API несапраўдны. Праверце яго ў наладах.</string>
     <string name="error_translate_no_credit">На рахунку не засталося крэдытаў. Папоўніце баланс у кансолі правайдара.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">Коміксы</string>
     <string name="translation_domain_tech">Тэхніка</string>
     <string name="translation_domain_business">Бізнес</string>
+  <string name="api_key_clear">Ачысціць</string>
 </resources>

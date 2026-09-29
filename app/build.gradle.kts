@@ -1,32 +1,31 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.services)
     alias(libs.plugins.google.firebase.crashlytics)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.compose.compiler)
 }
 
-val admobAppId = if (gradle.startParameter.taskNames.any { it.contains("Debug") }) {
-    "ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx"
-} else {
-    "ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx"
+// 릴리스 서명 값은 깃에 넣지 않는 local.properties 에 둔다. gradle.properties / -P / ORG_GRADLE_PROJECT_ 환경변수도 받는다.
+val localProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
+fun signingProperty(key: String): String? =
+    localProperties.getProperty(key)?.takeIf { it.isNotBlank() } ?: providers.gradleProperty(key).orNull
 
 android {
     namespace = "com.galaxy.airviewdictionary"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.galaxy.airviewdictionary"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20800
-        versionName = "2.8.0"
-        manifestPlaceholders["ADMOB_APP_ID"] = admobAppId
+        versionCode = 20802
+        versionName = "2.8.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     bundle {
@@ -34,20 +33,30 @@ android {
         language { enableSplit = true } // 언어별로 APK를 나누기
         density { enableSplit = true } // 해상도별로 APK를 나누기
     }
-    signingConfigs {
-        create("release") {
-            keyAlias = project.property("KEY_ALIAS") as String
-            keyPassword = project.property("KEY_PASSWORD") as String
-            storeFile = file(rootProject.file(project.property("KEYSTORE_FILE") as String))
-            storePassword = project.property("KEY_PASSWORD") as String
+    // 키스토어 값이 없으면(공개 미러 클론 등) 서명 없이 디버그 빌드만 되게 하고, 릴리스 빌드는 멈춘다.
+    val releaseStoreFile = signingProperty("KEYSTORE_FILE")
+    val releaseKeyAlias = signingProperty("KEY_ALIAS")
+    val releaseKeyPassword = signingProperty("KEY_PASSWORD")
+    if (releaseStoreFile != null && releaseKeyAlias != null && releaseKeyPassword != null) {
+        signingConfigs.create("release") {
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
+            storeFile = rootProject.file(releaseStoreFile)
+            storePassword = releaseKeyPassword
         }
+    } else if (gradle.startParameter.taskNames.any { it.contains("Release") }) {
+        throw GradleException("릴리스 서명 값 없음: local.properties 에 KEYSTORE_FILE / KEY_ALIAS / KEY_PASSWORD 를 넣을 것")
     }
+    // AdMob 앱 ID 는 빌드 타입별로 둔다. 광고 단위 ID 는 코드에서 BuildConfig.DEBUG 로 고른다(AdGateActivity).
+    // 예전처럼 실행한 태스크 이름으로 고르면 `assembleDebug bundleRelease` 를 한 번에 돌릴 때 릴리스에 테스트 ID 가 들어갔다.
     buildTypes {
         debug {
+            manifestPlaceholders["ADMOB_APP_ID"] = "ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx"
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
         release {
+            manifestPlaceholders["ADMOB_APP_ID"] = "ca-app-pub-xxxxxxxxxxxxxxxx~xxxxxxxxxx"
             isMinifyEnabled = true
             isShrinkResources = true
             isDebuggable = false
@@ -55,10 +64,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            firebaseCrashlytics {
-                mappingFileUploadEnabled = true
-            }
-            signingConfig = signingConfigs.getByName("release")
+            // Crashlytics 매핑 파일 업로드는 minify 빌드에서 기본으로 켜진다(플러그인 3.0.8: getOrElse(isMinifyEnabled))
+            signingConfig = signingConfigs.findByName("release")
         }
     }
     // PP-OCRv5 모델 팩. 스토어 설치에서는 Play 가 설치 직후 받아 준다(fast-follow).
@@ -76,24 +83,13 @@ android {
     }
     buildFeatures {
         buildConfig = true
-    }
-    buildFeatures {
         compose = true
         viewBinding = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.composeCompiler.get()
     }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -127,7 +123,7 @@ dependencies {
     // Hilt
     implementation(libs.dagger.hilt.android)
     ksp(libs.dagger.hilt.android.compiler)
-    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
 
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)

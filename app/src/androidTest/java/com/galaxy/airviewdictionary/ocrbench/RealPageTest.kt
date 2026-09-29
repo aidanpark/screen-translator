@@ -3,6 +3,7 @@ package com.galaxy.airviewdictionary.ocrbench
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.test.platform.app.InstrumentationRegistry
+import com.galaxy.airviewdictionary.data.local.vision.AssemblyParams
 import com.galaxy.airviewdictionary.data.local.vision.VisionRepository
 import com.galaxy.airviewdictionary.data.local.vision.WritingDirection
 import com.galaxy.airviewdictionary.data.local.vision.model.Line
@@ -37,8 +38,7 @@ class RealPageTest {
                 val detail = StringBuilder()
                 for (lang in langs) {
                     val d = if (lang in rtl) WritingDirection.RTL else WritingDirection.LTR
-                    repository.setReferenceConstantValue(false, lang, linesFromDetector = true)
-                    repository.LINE_PITCH_LIMIT = limit
+                    val params = AssemblyParams.reference(false, lang, linesFromDetector = true).copy(LINE_PITCH_LIMIT = limit)
                     val bj = read("vis_$lang.json")
                     val blocks = (0 until bj.length()).map { i ->
                         val o = bj.getJSONObject(i)
@@ -53,7 +53,7 @@ class RealPageTest {
                     fun blockOf(l: Line) = blocks.firstOrNull {
                         it.second.contains(l.boundingBox.centerX(), l.boundingBox.centerY())
                     }?.first ?: -1
-                    val ps = repository.groupLinesIntoParagraphs(ls, d)
+                    val ps = repository.groupLinesIntoParagraphs(ls, d, params)
                     var g = 0; var e = 0; var c = 0
                     for ((id, _) in blocks) {
                         val own = ls.filter { blockOf(it) == id }

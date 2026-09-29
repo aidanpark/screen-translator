@@ -3,6 +3,7 @@ package com.galaxy.airviewdictionary.ocrbench
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.test.platform.app.InstrumentationRegistry
+import com.galaxy.airviewdictionary.data.local.vision.AssemblyParams
 import com.galaxy.airviewdictionary.data.local.vision.VisionRepository
 import com.galaxy.airviewdictionary.data.local.vision.WritingDirection
 import com.galaxy.airviewdictionary.data.local.vision.model.Line
@@ -71,13 +72,12 @@ class PitchSweepTest {
                     var maxGrouped = 0
                     var expected = 0
                     for (limit in steps) {
-                        repository.setReferenceConstantValue(false, lang, linesFromDetector = true)
-                        repository.LINE_PITCH_LIMIT = limit
+                        val params = AssemblyParams.reference(false, lang, linesFromDetector = true).copy(LINE_PITCH_LIMIT = limit)
                         val ls = lines(lang, kind, variant, d)
                         fun blockOf(l: Line) = bs.firstOrNull {
                             it.rect.contains(l.boundingBox.centerX(), l.boundingBox.centerY())
                         }?.id ?: -1
-                        val ps = repository.groupLinesIntoParagraphs(ls, d)
+                        val ps = repository.groupLinesIntoParagraphs(ls, d, params)
                         var g = 0; var e = 0; var c = 0
                         for (b in bs) {
                             val own = ls.filter { blockOf(it) == b.id }
@@ -113,14 +113,13 @@ class PitchSweepTest {
                 for (lang in langs) {
                     val d = if (lang in rtl) WritingDirection.RTL else WritingDirection.LTR
                     for (kind in listOf("easy", "tight")) {
-                        repository.setReferenceConstantValue(false, lang, linesFromDetector = true)
-                        repository.LINE_PITCH_LIMIT = limit
+                        val params = AssemblyParams.reference(false, lang, linesFromDetector = true).copy(LINE_PITCH_LIMIT = limit)
                         val ls = lines(lang, kind, variant, d)
                         val bs = blocks(lang, kind)
                         fun blockOf(l: Line) = bs.firstOrNull {
                             it.rect.contains(l.boundingBox.centerX(), l.boundingBox.centerY())
                         }?.id ?: -1
-                        val ps = repository.groupLinesIntoParagraphs(ls, d)
+                        val ps = repository.groupLinesIntoParagraphs(ls, d, params)
                         for (b in bs) {
                             val own = ls.filter { blockOf(it) == b.id }
                             if (own.size < 2) continue

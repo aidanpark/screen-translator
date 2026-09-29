@@ -40,6 +40,11 @@ object ScreenInfoHolder {
         // 2. 화면 방향
         val orientation = activity.resources.configuration.orientation
 
+        // 크기·방향은 지금 바로 저장한다. 인셋은 뷰가 붙은 뒤에야 알 수 있어 아래 post 에서 채우는데,
+        // SettingsActivity 가 곧바로 포인터·메뉴바를 띄우며 크기를 읽으므로 그 사이 0 이 보이면
+        // 포인터가 왼쪽 위(−w/2, −h/2)에 반쯤 잘려 뜬다.
+        set(get().copy(width = metrics.width, height = metrics.height, orientation = orientation))
+
         // 3. WindowInsets로 상태바, 네비바, 세이프패딩 구하기
         activity.window.decorView.post {
             val insets = activity.window.decorView.rootWindowInsets

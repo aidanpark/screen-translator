@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Looge API-võti keskkonnas Anthropic Console. Kasutuse eest esitatakse arve teie Anthropic kontole.</string>
     <string name="settings_menu_how_to_use">Kasutusjuhend</string>
     <string name="settings_menu_privacy_policy">Privaatsuspoliitika</string>
-    <string name="source_language_no_screen_reader">Ekraaniteksti tuvastamist ei toetata</string>
     <string name="ocr_model_preparing">Tõlkemootori ettevalmistamine. Palun oota hetk.</string>
     <string name="error_translate_invalid_key">API võti on kehtetu. Kontrolli seda seadetes.</string>
     <string name="error_translate_no_credit">Kontol pole krediiti. Lisa seda teenusepakkuja konsoolis.</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">Koomiks</string>
     <string name="translation_domain_tech">Tehniline</string>
     <string name="translation_domain_business">Äri</string>
+  <string name="api_key_clear">Tühjenda</string>
 </resources>
 
 

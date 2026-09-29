@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Anthropic Console で API キーを作成します。使用量は Anthropic アカウントに請求されます。</string>
   <string name="settings_menu_how_to_use">使い方</string>
   <string name="settings_menu_privacy_policy">プライバシーポリシー</string>
-  <string name="source_language_no_screen_reader">画面の文字認識に未対応</string>
   <string name="ocr_model_preparing">翻訳エンジンを準備しています。しばらくお待ちください。</string>
   <string name="error_translate_invalid_key">APIキーが無効です。設定で確認してください。</string>
   <string name="error_translate_no_credit">アカウントのクレジットがありません。提供元のコンソールでチャージしてください。</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">マンガ</string>
     <string name="translation_domain_tech">技術</string>
     <string name="translation_domain_business">ビジネス</string>
+  <string name="api_key_clear">クリア</string>
 </resources>

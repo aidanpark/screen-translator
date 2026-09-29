@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">Ստեղծեք API բանալի Anthropic Console-ում։ Օգտագործումը գանձվում է ձեր Anthropic հաշվին։</string>
     <string name="settings_menu_how_to_use">Օգտագործման ուղեցույց</string>
     <string name="settings_menu_privacy_policy">Գաղտնիության քաղաքականություն</string>
-    <string name="source_language_no_screen_reader">Էկրանի տեքստի ճանաչումը չի աջակցվում</string>
     <string name="ocr_model_preparing">Թարգմանության շարժիչը պատրաստվում է։ Խնդրում ենք մի փոքր սպասել։</string>
     <string name="error_translate_invalid_key">API բանալին անվավեր է։ Ստուգեք այն կարգավորումներում։</string>
     <string name="error_translate_no_credit">Հաշվում կրեդիտներ չկան։ Համալրեք մատակարարի վահանակում։</string>
@@ -121,6 +120,7 @@
     <string name="translation_domain_comic">Կոմիքս</string>
     <string name="translation_domain_tech">Տեխնիկական</string>
     <string name="translation_domain_business">Բիզնես</string>
+  <string name="api_key_clear">Մաքրել</string>
 </resources>
 
 

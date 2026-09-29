@@ -161,7 +161,7 @@ class OpenAiKit @Inject constructor(
                     targetLanguageCode = targetLanguageCode,
                     sourceText = sourceText,
                     translationKitType = TranslationKitType.OPENAI,
-                    // 텍스트 경로는 언어를 판정하지 않는다. 지정 번역이면 그 언어가 곧 원문 언어다.
+                    // AI 엔진은 원문 언어를 돌려주지 않는다. 지정 번역이면 그 언어가 곧 원문 언어다.
                     resolvedSourceLanguageCode = sourceLanguageCode.takeIf { it != "auto" },
                     resultText = resultText,
                     modelName = model,

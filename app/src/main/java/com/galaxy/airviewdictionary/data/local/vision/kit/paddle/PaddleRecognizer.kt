@@ -1,6 +1,7 @@
 package com.galaxy.airviewdictionary.data.local.vision.kit.paddle
 
 import ai.onnxruntime.OnnxTensor
+import ai.onnxruntime.OrtSession
 import android.graphics.Bitmap
 import android.graphics.Rect
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrLine
@@ -21,7 +22,7 @@ import kotlin.math.roundToInt
  * 인식기 메모리가 폭의 제곱에 가깝게 늘기 때문이다(§22). 글자 상자는 조각의 자리만큼 옮긴다.
  *
  * [visualOrder] 인식기(아랍 문자)는 글을 **화면에 보이는 순서**(왼쪽부터)로 낸다. 읽는 순서로 되돌린다 — 라틴·숫자 덩어리는 안의 순서를
- * 지키고 괄호는 거울상을 되돌린다([ReadingOrder]). `OcrText` 계약 2.
+ * 지키고 괄호는 거울상을 되돌린다([VisualOrder]). `OcrText` 계약 2.
  */
 internal class PaddleRecognizer(
     private val sessions: PaddleSessions,
@@ -48,7 +49,8 @@ internal class PaddleRecognizer(
      */
     private class Emission(val text: String, val left: Int, val right: Int, val prob: Float, val synthetic: Boolean = false)
 
-    fun read(screen: Bitmap, box: Rect): OcrLine {
+    /** [options] 를 추론에 넘긴다 — 취소되면 도는 추론을 멈추는 데 쓴다([terminable]). */
+    fun read(screen: Bitmap, box: Rect, options: OrtSession.RunOptions? = null): OcrLine {
         val session = sessions.session(model, THREADS) ?: throw IllegalStateException("$model 세션이 없다")
         val vocab = vocab ?: throw IllegalStateException("$dictionary 가 아직 없다")
         val started = System.nanoTime()
@@ -74,7 +76,8 @@ internal class PaddleRecognizer(
             val t1 = System.nanoTime()
             preparing += t1 - t0
             OnnxTensor.createTensor(sessions.env, tensor, longArrayOf(1, 3, HEIGHT.toLong(), width.toLong())).use { x ->
-                session.run(mapOf(session.inputNames.first() to x)).use { out ->
+                val inputs = mapOf(session.inputNames.first() to x)
+                (if (options != null) session.run(inputs, options) else session.run(inputs)).use { out ->
                     inferring += System.nanoTime() - t1
                     val result = out[0] as OnnxTensor
                     val shape = result.info.shape // [1, T, C]
@@ -123,26 +126,45 @@ internal class PaddleRecognizer(
         return toLine(box, emissions)
     }
 
-    /** 방출로 글자·단어 상자를 세운다. 글자 폭은 다음 방출까지다. */
+    /**
+     * 방출로 글자·단어 상자를 세운다. 글자 폭은 다음 방출까지다.
+     *
+     * 줄의 첫 글자와 마지막 글자는 줄 상자 끝까지 늘린다. CTC 는 글자 안쪽의 한 시점에서 방출하므로 첫 방출은 글자 왼끝보다, 마지막 방출의 다음
+     * 시점은 글자 오른끝보다 안쪽이다(훑기 캡처 1,699줄: 잉크 끝과의 차이 중앙값 줄 높이의 0.15~0.27, 90% 0.5). 그대로 두면 단어 모드에서 줄 끝
+     * 단어의 바깥쪽을 가리켜도 단어가 잡히지 않는다.
+     */
     private fun toLine(box: Rect, emissions: List<Emission>): OcrLine {
+        val first = emissions.indexOfFirst { it.text != " " }
+        val last = emissions.indexOfLast { it.text != " " }
         val symbols = emissions.mapIndexed { i, e ->
-            val end = if (i + 1 < emissions.size) emissions[i + 1].left else e.right
-            OcrSymbol(Rect(e.left, box.top, max(end, e.left + 1), box.bottom), e.text, if (e.synthetic) null else e.prob)
+            val left = if (i == first) box.left else e.left
+            val end = when {
+                i == last -> box.right
+                i + 1 < emissions.size -> emissions[i + 1].left
+                else -> e.right
+            }
+            OcrSymbol(Rect(left, box.top, max(end, left + 1), box.bottom), e.text, if (e.synthetic) null else e.prob)
         }
-        // 보이는 순서의 공백 경계로 단어를 가른다
+        // 읽는 순서는 줄 전체로 정한다 — 단어만 떼어 보면 아랍어 문맥이 없어 숫자 순서를 달리 판정한다([VisualOrder]).
+        // 거울상을 되돌린 괄호는 글만 바꾼 글자가 된다(상자는 그대로)
+        val placed = if (visualOrder) VisualOrder.place(symbols.map { it.text }) else symbols.indices.map { VisualOrder.Placed(it, symbols[it].text) }
+        val rank = IntArray(symbols.size).also { r -> placed.forEachIndexed { k, p -> r[p.index] = k } }
+        val logical = symbols.toMutableList().also { l -> placed.forEach { p -> if (p.text != symbols[p.index].text) l[p.index] = symbols[p.index].copy(text = p.text) } }
+
+        // 보이는 순서의 공백 경계로 단어를 가른다. 단어 안의 글자는 줄의 읽는 순서를 따른다
         val words = mutableListOf<OcrWord>()
-        var current = mutableListOf<OcrSymbol>()
+        var current = mutableListOf<Int>()
         fun flush() {
             if (current.isEmpty()) return
-            val ordered = if (visualOrder) readingOrder(current) else current
-            val wordBox = Rect(current.first().boundingBox!!.left, box.top, current.last().boundingBox!!.right, box.bottom)
+            val ordered = current.sortedBy { rank[it] }.map { logical[it] }
+            val wordBox = Rect(symbols[current.first()].boundingBox!!.left, box.top, symbols[current.last()].boundingBox!!.right, box.bottom)
             words.add(OcrWord(wordBox, ordered.joinToString("") { it.text }, ordered))
             current = mutableListOf()
         }
-        for (s in symbols) if (s.text == " ") flush() else current.add(s)
+        for (i in symbols.indices) if (symbols[i].text == " ") flush() else current.add(i)
         flush()
 
-        val lineSymbols = if (visualOrder) readingOrder(symbols) else symbols
+        val lineSymbols = placed.map { logical[it.index] }
         val read = emissions.filterNot { it.synthetic }
         val confidence = if (read.isEmpty()) 0f else read.map { it.prob }.average().toFloat()
         return OcrLine(box, lineSymbols.joinToString("") { it.text }.trim(), confidence, words)
@@ -157,9 +179,5 @@ internal class PaddleRecognizer(
          * 여럿이어도 동시에 도는 순전파는 모두 상한 폭 이하이고 그중 넓은 줄의 조각은 하나뿐이다.
          */
         private val WIDE_LINES = Any()
-
-        /** 보이는 순서(왼쪽부터)의 글자를 읽는 순서로. 거울상을 되돌린 괄호는 글만 바꾼 글자가 된다(상자는 그대로). */
-        private fun readingOrder(visual: List<OcrSymbol>): List<OcrSymbol> =
-            ReadingOrder.of(visual, { it.text }, { symbol, mirrored -> symbol.copy(text = mirrored) })
     }
 }

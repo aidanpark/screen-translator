@@ -97,7 +97,6 @@
   <string name="claude_key_signup_guide">צרו מפתח API ב-Anthropic Console. השימוש מחויב לחשבון ה-Anthropic שלכם.</string>
   <string name="settings_menu_how_to_use">הוראות שימוש</string>
   <string name="settings_menu_privacy_policy">מדיניות פרטיות</string>
-  <string name="source_language_no_screen_reader">זיהוי טקסט במסך אינו נתמך</string>
   <string name="ocr_model_preparing">מנוע התרגום בהכנה. נא להמתין רגע.</string>
   <string name="error_translate_invalid_key">מפתח ה-API לא תקין. בדקו אותו בהגדרות.</string>
   <string name="error_translate_no_credit">לא נותרו קרדיטים בחשבון. טענו מחדש בקונסולת הספק.</string>
@@ -121,4 +120,5 @@
     <string name="translation_domain_comic">קומיקס</string>
     <string name="translation_domain_tech">טכני</string>
     <string name="translation_domain_business">עסקי</string>
+  <string name="api_key_clear">ניקוי</string>
 </resources>

@@ -38,6 +38,7 @@ class LazyReadTest {
     /** ML Kit 을 감싸 검출과 읽기를 나눈 척한다. */
     private class LazyKit(private val inner: VisionKit) : VisionKit {
         override val name = "lazy(${inner.name})"
+        override val linesFromDetector = true
         private val original = IdentityHashMap<OcrLine, OcrLine>()
         var recognizeCalls = 0
         var recognizedLines = 0

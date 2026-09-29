@@ -1,7 +1,6 @@
 package com.galaxy.airviewdictionary.ui.screen.overlay.languagelist
 
 
-import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKitSelector
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.PixelFormat
@@ -35,6 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,8 +60,10 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.galaxy.airviewdictionary.R
+import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
 import com.galaxy.airviewdictionary.data.remote.translation.Language
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
+import com.galaxy.airviewdictionary.data.remote.translation.claude.ClaudeKit
 import com.galaxy.airviewdictionary.core.OverlayService
 import com.galaxy.airviewdictionary.ui.screen.overlay.OverlayView
 import kotlinx.coroutines.delay
@@ -125,6 +127,8 @@ class LanguageListView private constructor() : OverlayView() {
     @Composable
     fun LanguageList() {
         val context = LocalContext.current
+        // 원문 목록의 이미지 전용 언어가 Claude 키를 본다(LanguageItem)
+        LaunchedEffect(Unit) { ClaudeKit.refreshAvailability(context) }
         val lifecycleOwner = LocalLifecycleOwner.current
         val configuration = LocalConfiguration.current
         val isPortrait = configuration.orientation == Configuration.ORIENTATION_PORTRAIT
@@ -316,9 +320,14 @@ class LanguageListView private constructor() : OverlayView() {
     ) {
         val coroutineScope = rememberCoroutineScope()
         val isDarkMode = isSystemInDarkTheme()
-        // 원문 목록에서는 화면 글자를 읽을 엔진이 없는 언어를 고를 수 없다 — 사유를 함께 보인다(§21).
-        val noScreenReader = type.value == Type.SOURCE && !VisionKitSelector.hasReaderFor(language.code)
-        val enabled = !noScreenReader && language.supportKitTypes.intersect(oppositeLanguage.supportKitTypes.toSet()).isNotEmpty()
+        // 화면 글자를 읽을 엔진이 없는 언어는 Claude 이미지 번역으로만 원문이 된다 — 지원 엔진은 Claude 하나만 보이고(supportKitTypes),
+        // Claude 키가 있어야 고를 수 있다(§25)
+        val claudeActivated by ClaudeKit.keyActivatedStateFlow.collectAsStateWithLifecycle()
+        val imageOnly = type.value == Type.SOURCE && ImageTranslation.isImageOnlyLanguage(language.code)
+        val enabled = (!imageOnly || claudeActivated && ImageTranslation.Switch.enabled) &&
+                language.supportKitTypes.intersect(oppositeLanguage.supportKitTypes.toSet()).isNotEmpty()
+        // 고를 수 없는 원문 언어는 엔진 로고도 회색으로 — 컬러 로고는 "이 엔진으로 번역된다" 로 읽힌다
+        val grayLogos = type.value == Type.SOURCE && !enabled
 
         Button(
             onClick = {
@@ -353,13 +362,6 @@ class LanguageListView private constructor() : OverlayView() {
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                         color = Color.Gray
                     )
-                    if (noScreenReader) {
-                        Text(
-                            text = stringResource(id = R.string.source_language_no_screen_reader),
-                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                            color = contentDisabledColor
-                        )
-                    }
                 }
                 language.supportKitTypes.forEach { kitType ->
                     val support =
@@ -369,8 +371,13 @@ class LanguageListView private constructor() : OverlayView() {
                             viewModel.translationRepository.isSupportedAsTarget(kitType, language.code, oppositeLanguage.code)
                         }
                     Image(
-//                        painter = painterResource(id = if (support) kitType.ciResourceId else if (isDarkMode) kitType.ciGrayResourceId else kitType.ciGrayDarkResourceId),
-                        painter = painterResource(id = kitType.ciResourceId),
+                        painter = painterResource(
+                            id = when {
+                                !grayLogos -> kitType.ciResourceId
+                                isDarkMode -> kitType.ciGrayDarkResourceId
+                                else -> kitType.ciGrayResourceId
+                            }
+                        ),
                         contentDescription = "$kitType logo",
                         modifier = Modifier
                             // OpenAI 로고는 캔버스를 꽉 채워 같은 dp 에서 더 커 보이므로 살짝 줄인다
