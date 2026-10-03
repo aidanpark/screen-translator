@@ -34,6 +34,7 @@ import com.galaxy.airviewdictionary.data.local.capture.ImageCrop
 import com.galaxy.airviewdictionary.data.local.vision.model.ImageTargets
 import com.galaxy.airviewdictionary.data.local.vision.model.Line
 import com.galaxy.airviewdictionary.data.local.vision.model.Paragraph
+import com.galaxy.airviewdictionary.data.local.vision.model.Sentence
 import com.galaxy.airviewdictionary.data.local.vision.model.VisionResponse
 import com.galaxy.airviewdictionary.data.local.vision.model.VisionText
 import com.galaxy.airviewdictionary.data.local.vision.model.Word
@@ -41,6 +42,7 @@ import com.galaxy.airviewdictionary.data.local.vision.model.Transaction as Visio
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrText
 import com.galaxy.airviewdictionary.data.remote.firebase.AnalyticsRepository
 import com.galaxy.airviewdictionary.data.remote.firebase.RemoteConfigRepository
+import com.galaxy.airviewdictionary.data.remote.translation.ImageTargetNarrowing
 import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
 import com.galaxy.airviewdictionary.data.remote.translation.NoTextInImageException
 import com.galaxy.airviewdictionary.data.remote.translation.Transaction
@@ -731,6 +733,19 @@ class TargetHandleViewModel(
         .map { it.visionText }
         .distinctUntilChanged()
 
+    /**
+     * AI 이미지 번역(§25)에서 응답을 받은 뒤 좁힌 하이라이트 — (원래 대상, 좁힌 상자). 대상이 바뀌면 [highlightedVisionTextFlow] 가 버린다.
+     */
+    private val narrowedTargetFlow = MutableStateFlow<Pair<VisionText, VisionText>?>(null)
+
+    /**
+     * 하이라이트(인식 상자)로 그릴 것. 보통은 [pointerPositionedVisionTextFlow] 그대로고, 이미지 번역의 단어·문장 모드에서 응답이 오면
+     * 줄·문단 대신 번역한 단어·문장 자리([narrowImageTarget])다.
+     */
+    val highlightedVisionTextFlow: Flow<VisionText?> = combine(pointerPositionedVisionTextFlow, narrowedTargetFlow) { target, narrowed ->
+        narrowed?.takeIf { it.first == target }?.second ?: target
+    }.distinctUntilChanged()
+
     /** 포인터 자리의 문단을 아직 읽지 않았나 — 읽는 동안 대상 찾기가 기다린다. SELECT 는 문단을 읽지 않는다. */
     private fun needsReading(
         visionResult: com.galaxy.airviewdictionary.data.local.vision.model.Transaction,
@@ -1025,6 +1040,13 @@ class TargetHandleViewModel(
                                         // 번역창 컴포저블에서 세면 다시 그릴 때마다 중복될 수 있다.
                                         analyticsRepository.translationReport(transaction, textDetectMode)
 
+                                        // 이미지 번역은 대상이 줄·문단이다 — 모델이 함께 돌려준 줄·문단 글로 번역한 단어·문장 자리를 어림해 하이라이트를 좁힌다
+                                        val anchor = if (image) {
+                                            narrowImageTarget(pointerPositionedVisionText, it.result, found.position).also { narrowed ->
+                                                if (narrowed !== pointerPositionedVisionText) narrowedTargetFlow.value = pointerPositionedVisionText to narrowed
+                                            }
+                                        } else pointerPositionedVisionText
+
                                         val motionEventState = motionEventFlow.first()
                                         if (motionEventState == MotionEvent.ACTION_DOWN || motionEventState == MotionEvent.ACTION_MOVE) {
                                             translateStatusFlow.value = TranslateStatus.Translated
@@ -1033,7 +1055,7 @@ class TargetHandleViewModel(
                                             TranslationView.INSTANCE.cast(
                                                 applicationContext,
                                                 transaction,
-                                                pointerPositionedVisionText
+                                                anchor
                                             )
                                             pointerPositionedTranslationFlow.value = transaction
                                         }
@@ -1093,6 +1115,33 @@ class TargetHandleViewModel(
         if (kotlin.math.abs(to.y - from.y) > lineHeight * IMAGE_MOVE_LINE_RATIO) return true
         val ratio = if (mode == TextDetectMode.WORD) IMAGE_MOVE_WORD_RATIO else IMAGE_MOVE_SENTENCE_RATIO
         return kotlin.math.abs(to.x - from.x) > lineHeight * ratio
+    }
+
+    /**
+     * 이미지 번역(§25)의 하이라이트를 좁힌다. 단어·문장 모드에서 모델이 고른 글([Transaction.sourceText])이 함께 돌려준 줄·문단 글
+     * ([Transaction.imageContext])의 어디인지를 줄 폭에 비례해 화면 자리로 옮긴다([ImageTargetNarrowing]). 단어 모드는 단어 상자 하나, 문장 모드는
+     * 줄마다 상자인 문장이다. 줄 위치를 모르는 대상(포인터 띠·영역)이거나 글을 못 찾으면 [target] 그대로.
+     */
+    private fun narrowImageTarget(target: VisionText, result: Transaction, pointer: Point?): VisionText {
+        val mode = textDetectMode
+        if (!ImageTranslation.asksContext(mode)) return target
+        if (visionResultFlow.value?.image != ImageTargets.Detected) return target
+        val context = result.imageContext ?: return target
+        val source = result.sourceText ?: return target
+        val lines = (if (target is Paragraph) target.lines.map { it.boundingBox } else listOf(target.boundingBox))
+            .map { intArrayOf(it.left, it.top, it.right, it.bottom) }
+        val rtl = target.writingDirection == com.galaxy.airviewdictionary.data.local.vision.WritingDirection.RTL
+        val spans = ImageTargetNarrowing.narrow(lines, context, source, pointer?.let { intArrayOf(it.x, it.y) }, rtl)
+            ?.takeIf { it.isNotEmpty() } ?: return target
+        val fontHeight = lineHeightOf(target).toDouble()
+        val direction = target.writingDirection
+        fun word(b: IntArray, text: String) = Word(Rect(b[0], b[1], b[2], b[3]), text, direction, emptyList(), fontHeight)
+        return if (mode == TextDetectMode.WORD || spans.size == 1) {
+            val b = spans.first()
+            word(b, source)
+        } else {
+            Sentence(spans.mapIndexed { i, b -> Line(mutableListOf(word(b, if (i == 0) source else "")), direction) }.toMutableList(), direction, fontHeight)
+        }
     }
 
     /** 대상의 줄 높이 — 자를 때 위아래 여백의 기준이다. */

@@ -26,12 +26,13 @@ class ImageTranslationTest {
     }
 
     @Test
-    fun 이미지로_보내는_것은_Claude_에서_auto_와_이미지_전용_언어뿐이다() {
+    fun 이미지로_보내는_것은_Claude_에서_이미지_전용_언어뿐이다() {
         fun uses(kit: TranslationKitType, source: String, ready: Boolean = true, enabled: Boolean = true) =
             ImageTranslation.uses(kit, source, ready, enabled)
 
-        assertTrue(uses(TranslationKitType.CLAUDE, "auto"))
-        assertTrue(uses(TranslationKitType.CLAUDE, "AUTO"))
+        // auto 는 OCR 글 번역 — 이미지로 보내면 단어·문장 모드의 하이라이트가 줄·문단으로 잡힌다(2.8.2)
+        assertFalse(uses(TranslationKitType.CLAUDE, "auto"))
+        assertFalse(uses(TranslationKitType.CLAUDE, "AUTO"))
         assertTrue(uses(TranslationKitType.CLAUDE, "he"))
         assertTrue(uses(TranslationKitType.CLAUDE, "bn"))
         // 읽을 수 있는 언어는 지금처럼 OCR 글 번역
@@ -43,7 +44,7 @@ class ImageTranslationTest {
             assertFalse("$kit", uses(kit, "he"))
         }
         // 키가 없거나 원격 스위치를 끄면 글로
-        assertFalse(uses(TranslationKitType.CLAUDE, "auto", ready = false))
+        assertFalse(uses(TranslationKitType.CLAUDE, "he", ready = false))
         assertFalse(uses(TranslationKitType.CLAUDE, "he", enabled = false))
     }
 
@@ -104,6 +105,19 @@ class ImageTranslationTest {
         assertEquals(listOf("language", "source", "translation"), auto["required"])
         @Suppress("UNCHECKED_CAST")
         assertEquals(setOf("language", "source", "translation"), (auto["properties"] as Map<String, Any>).keys)
+    }
+
+    @Test
+    fun 단어_문장_모드는_줄_문단_전체_글도_받는다() {
+        assertEquals(listOf("source", "translation", "context"), ImageTranslation.responseSchema(false, TextDetectMode.WORD)["required"])
+        assertEquals(listOf("source", "translation", "context"), ImageTranslation.responseSchema(false, TextDetectMode.SENTENCE)["required"])
+        assertEquals(listOf("source", "translation"), ImageTranslation.responseSchema(false, TextDetectMode.PARAGRAPH)["required"])
+        assertEquals(listOf("source", "translation"), ImageTranslation.responseSchema(false, TextDetectMode.SELECT)["required"])
+        assertTrue(prompt(TextDetectMode.WORD, "Hebrew").contains("\"context\", give the whole line"))
+        assertTrue(prompt(TextDetectMode.SENTENCE, "Hebrew").contains("\"context\", give the whole paragraph"))
+        assertTrue(!prompt(TextDetectMode.PARAGRAPH, "Hebrew").contains("\"context\""))
+        assertEquals("שלום עולם", ImageTranslation.parse("""{"source":"עולם","translation":"세상","context":" שלום עולם "}""")!!.context)
+        assertNull(ImageTranslation.parse("""{"source":"a","translation":"b"}""")!!.context)
     }
 
     @Test

@@ -14,9 +14,12 @@ import java.util.Locale
 /**
  * AI 이미지 번역 — 화면을 잘라 Claude 에 보내 읽기와 번역을 함께 맡긴다(`.docs/vision-engine-design.md` §25, 2026-09-28 사용자 결정).
  *
- * 화면 글자를 읽을 엔진이 없는 문자(원문 목록의 25개 언어)를 인식기를 늘리지 않고 번역하려는 것이고, Claude 에서 원문 언어가 auto 면 모든 화면을
- * 이 길로 보낸다 — auto 에서 "OCR 글을 믿을 수 없다" 를 가를 기준이 없어서다(인식기는 못 읽는 문자도 자신 있게 틀리게 읽는다, §24).
- * 줄·문단 위치는 PP-OCRv5 검출기가 찾는다(문자와 무관하게 줄을 찾는다).
+ * 화면 글자를 읽을 엔진이 없는 문자(원문 목록의 25개 언어)를 인식기를 늘리지 않고 번역하려는 것이다. 줄·문단 위치는 PP-OCRv5 검출기가 찾는다
+ * (문자와 무관하게 줄을 찾는다). 글을 읽지 않으니 단어·문장의 자리를 몰라, 하이라이트는 단어 모드면 줄, 문장 모드면 문단이다.
+ *
+ * 2.8.2 는 Claude 에서 원문이 auto 면 모든 화면을 이 길로 보냈다. 번역은 표시를 보고 단어·문장을 골랐지만 하이라이트가 줄·문단으로 잡혀
+ * 단어·문장 모드가 줄·문단 모드처럼 보였다(2026-09-30 사용자 확인). 2.8.3 부터 auto 는 OCR 글 번역이다 — 읽을 수 있는 화면은 단어·문장을
+ * 정확히 잡고, auto 로 읽을 엔진이 없는 문자를 가리키면 2.8.0 처럼 못 읽는다(원문 언어를 직접 고르면 이 길로 읽는다).
  */
 object ImageTranslation {
 
@@ -24,12 +27,12 @@ object ImageTranslation {
     fun isImageOnlyLanguage(code: String): Boolean = !VisionKitSelector.hasReaderFor(code)
 
     /**
-     * 이 번역을 이미지로 보내는가. Claude 이고 키가 있을 때([claudeReady])만, 원문 언어가 auto 이거나 이미지로만 번역하는 언어면 그렇다.
+     * 이 번역을 이미지로 보내는가. Claude 이고 키가 있을 때([claudeReady])만, 원문 언어가 이미지로만 번역하는 언어면 그렇다. auto 는 글로 보낸다.
      * 원격 스위치([enabled])가 꺼져 있으면 언제나 글로 보낸다.
      */
     fun uses(kitType: TranslationKitType, sourceLanguage: String, claudeReady: Boolean, enabled: Boolean = Switch.enabled): Boolean =
         enabled && kitType == TranslationKitType.CLAUDE && claudeReady &&
-            (sourceLanguage.equals(AUTO, ignoreCase = true) || isImageOnlyLanguage(sourceLanguage))
+            !sourceLanguage.equals(AUTO, ignoreCase = true) && isImageOnlyLanguage(sourceLanguage)
 
     private const val AUTO = "auto"
 
@@ -78,6 +81,12 @@ object ImageTranslation {
         mode == TextDetectMode.WORD || mode == TextDetectMode.SENTENCE || mode == TextDetectMode.PARAGRAPH
 
     /**
+     * 고른 단어·문장이 든 줄·문단 전체 글(`context`)도 돌려받는가 — 단어·문장 모드. 하이라이트를 대상 줄·문단에서 그 단어·문장 자리로 좁힌다
+     * ([ImageTargetNarrowing]). 문단 모드는 대상이 이미 문단이다.
+     */
+    fun asksContext(mode: TextDetectMode): Boolean = mode == TextDetectMode.WORD || mode == TextDetectMode.SENTENCE
+
+    /**
      * 시스템 프롬프트. [sourceLanguageName] 이 null 이면 auto — 언어도 돌려받는다.
      *
      * 옛 이미지 경로(2.7.3, §16·§21 에서 걷어냄)의 실측 교훈을 따른다.
@@ -111,6 +120,11 @@ object ImageTranslation {
             append(" The text is expected to be in $sourceLanguageName; if it is actually in another language, translate it anyway.")
         }
         append(" In \"source\", give that text exactly as written, in its original script, with no corrections and nothing added.")
+        when (mode) {
+            TextDetectMode.WORD -> append(" In \"context\", give the whole line of text that word is on, exactly as written, from its first word to its last.")
+            TextDetectMode.SENTENCE -> append(" In \"context\", give the whole paragraph or text block that sentence is in, exactly as written, joining its lines with spaces.")
+            else -> {}
+        }
         append(" In \"translation\", give it translated into $targetLanguageName; if it is already in $targetLanguageName, repeat it unchanged.")
         append(" Keep the line breaks of the text only where they separate items such as a title, list entries or table cells.")
         if (sourceLanguageName == null) {
@@ -132,9 +146,10 @@ object ImageTranslation {
         append(" Only if there is truly none, leave every field empty.")
     }
 
-    /** 응답의 JSON 스키마(`output_config.format`). auto 면 언어도 받는다. */
-    fun responseSchema(auto: Boolean): Map<String, Any> {
-        val fields = if (auto) listOf("language", "source", "translation") else listOf("source", "translation")
+    /** 응답의 JSON 스키마(`output_config.format`). auto 면 언어도, 단어·문장 모드면 줄·문단 전체 글([asksContext])도 받는다. */
+    fun responseSchema(auto: Boolean, mode: TextDetectMode? = null): Map<String, Any> {
+        val fields = (if (auto) listOf("language", "source", "translation") else listOf("source", "translation")) +
+            (if (mode != null && asksContext(mode)) listOf("context") else emptyList())
         return mapOf(
             "type" to "object",
             "properties" to fields.associateWith { mapOf("type" to "string") },
@@ -143,8 +158,11 @@ object ImageTranslation {
         )
     }
 
-    /** 모델이 읽은 원문과 번역. [language] 는 auto 일 때 모델이 판정한 언어(판정 못 했으면 null). */
-    data class Reading(val source: String, val translation: String, val language: String?) {
+    /**
+     * 모델이 읽은 원문과 번역. [language] 는 auto 일 때 모델이 판정한 언어(판정 못 했으면 null). [context] 는 단어·문장 모드에서 그 단어·문장이 든
+     * 줄·문단 전체 글(없으면 null).
+     */
+    data class Reading(val source: String, val translation: String, val language: String?, val context: String? = null) {
         /** 표시 아래(또는 영역 안)에 글이 없다는 답. */
         val isEmpty: Boolean get() = source.isBlank() && translation.isBlank()
     }
@@ -160,6 +178,7 @@ object ImageTranslation {
             source = source.trim(),
             translation = translation.trim(),
             language = field("language")?.trim()?.lowercase()?.takeIf { LANGUAGE_CODE.matches(it) && it != "und" },
+            context = field("context")?.trim()?.takeIf { it.isNotEmpty() },
         )
     } catch (e: JsonParseException) {
         null

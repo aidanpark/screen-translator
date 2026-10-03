@@ -232,7 +232,7 @@ class ClaudeKit @Inject constructor(
                     mode = mode,
                 ),
                 "output_config" to mapOf(
-                    "format" to mapOf("type" to "json_schema", "schema" to ImageTranslation.responseSchema(auto)),
+                    "format" to mapOf("type" to "json_schema", "schema" to ImageTranslation.responseSchema(auto, mode)),
                 ),
                 "messages" to listOf(
                     mapOf(
@@ -272,6 +272,7 @@ class ClaudeKit @Inject constructor(
                     resolvedSourceLanguageCode = if (auto) reading.language else sourceLanguageCode,
                     resultText = reading.translation,
                     modelName = model,
+                    imageContext = reading.context,
                 )
             )
         } catch (e: CancellationException) {

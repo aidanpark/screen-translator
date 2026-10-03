@@ -41,6 +41,11 @@ data class Transaction(
     val resultText: String? = null,
     /** LLM 기반 엔진에서 실제 사용한 모델명. 그 외 엔진은 null. */
     val modelName: String? = null,
+    /**
+     * AI 이미지 번역(§25)의 단어·문장 모드에서 모델이 함께 읽은 대상 줄·문단 전체 글. 하이라이트를 좁히는 데만 쓴다([ImageTargetNarrowing]).
+     * 그 밖에는 null.
+     */
+    val imageContext: String? = null,
 ) {
     /**
      * 사용자가 자동 감지를 골랐고 실제로 언어가 확정된 경우에만 true.

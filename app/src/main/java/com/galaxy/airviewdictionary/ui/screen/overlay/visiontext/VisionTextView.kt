@@ -71,7 +71,8 @@ class VisionTextView private constructor() : OverlayView() {
         val lifecycleOwner = LocalLifecycleOwner.current
 
         val motionEventState by targetHandleViewModel.motionEventFlow.collectAsStateWithLifecycle()
-        val pointerPositionedVisionTextState by targetHandleViewModel.pointerPositionedVisionTextFlow.collectAsStateWithLifecycle(
+        // 대상 그대로가 아니라 하이라이트로 그릴 것 — 이미지 번역에서는 응답 뒤 단어·문장 자리로 좁혀진다
+        val pointerPositionedVisionTextState by targetHandleViewModel.highlightedVisionTextFlow.collectAsStateWithLifecycle(
             lifecycle = lifecycleOwner.lifecycle,
             initialValue = null
         )
