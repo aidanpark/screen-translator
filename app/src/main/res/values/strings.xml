@@ -131,4 +131,5 @@
     <!-- LLM 키 저장 성공 시 기대치 안내 (키 유효 ≠ 크레딧 보유) -->
     <string name="key_saved_credit_hint">Key verified. Translation also requires credits or free quota on your account.</string>
     <string name="api_key_clear">Clear</string>
+    <string name="error_unsupported_script">This looks like %1$s text, which can\'t be read from the screen. Switch to the Claude engine to translate it, or choose the source language if it\'s another language.</string>
 </resources>

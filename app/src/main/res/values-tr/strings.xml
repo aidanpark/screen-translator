@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Teknik</string>
     <string name="translation_domain_business">İş</string>
   <string name="api_key_clear">Temizle</string>
+  <string name="error_unsupported_script">Bu, ekrandan okunamayan %1$s metnine benziyor. Çevirmek için Claude motoruna geçin veya başka bir dilse kaynak dili seçin.</string>
 </resources>

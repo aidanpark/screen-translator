@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">နည်းပညာ</string>
     <string name="translation_domain_business">စီးပွားရေး</string>
   <string name="api_key_clear">ရှင်းလင်းရန်</string>
+  <string name="error_unsupported_script">ဤစာသားသည် %1$s စာသားဖြစ်ပုံရပြီး မျက်နှာပြင်မှ ဖတ်၍မရပါ။ ဘာသာပြန်ရန် Claude သို့ ပြောင်းပါ သို့မဟုတ် အခြားဘာသာစကားဖြစ်ပါက မူရင်းဘာသာစကားကို ရွေးပါ။</string>
 </resources>

@@ -17,6 +17,11 @@ data class Transaction(
     val unread: UnreadParagraphs? = null,
     /** AI 이미지 번역으로 보낼 화면이면 번역 대상을 찾는 방법(`.docs/vision-engine-design.md` §25). 글을 번역하면 null. */
     val image: ImageTargets? = null,
+    /**
+     * auto 의 지원되지 않는 문자권 관문(성능 P7)이 개입한 화면이면 그 판정 — 화면은 검출 줄로 묶은 이미지 대상([image] = Detected)이다.
+     * Claude 이미지 번역을 쓸 수 있으면 그 길로 보내고, 아니면 번역 대신 "읽을 수 없는 문자" 안내를 띄운다.
+     */
+    val unsupportedScript: com.galaxy.airviewdictionary.data.local.vision.kit.paddle.ScriptGate.Verdict? = null,
 ) {
 
     /** 글이 있는 문단. 검출만 된 화면이면 지금까지 읽은 것만, 화면의 문단 순서대로. */

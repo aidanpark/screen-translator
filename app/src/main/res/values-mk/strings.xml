@@ -122,4 +122,5 @@
     <string name="translation_domain_tech">Технички</string>
     <string name="translation_domain_business">Бизнис</string>
   <string name="api_key_clear">Исчисти</string>
+  <string name="error_unsupported_script">Ова изгледа како текст на %1$s, кој не може да се прочита од екранот. Префрлете се на Claude за да го преведете, или изберете изворен јазик ако е друг јазик.</string>
 </resources>

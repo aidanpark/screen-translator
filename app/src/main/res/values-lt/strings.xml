@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Techninė</string>
     <string name="translation_domain_business">Verslas</string>
   <string name="api_key_clear">Išvalyti</string>
+  <string name="error_unsupported_script">Atrodo, kad tai %1$s tekstas, kurio negalima perskaityti iš ekrano. Norėdami išversti, perjunkite į Claude arba pasirinkite šaltinio kalbą, jei tai kita kalba.</string>
 </resources>

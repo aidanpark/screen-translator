@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">தொழில்நுட்பம்</string>
     <string name="translation_domain_business">வணிகம்</string>
   <string name="api_key_clear">அழி</string>
+  <string name="error_unsupported_script">இது %1$s உரை போலத் தெரிகிறது, இதைத் திரையிலிருந்து படிக்க முடியாது. மொழிபெயர்க்க Claude இயந்திரத்துக்கு மாறவும், அல்லது வேறு மொழி என்றால் மூல மொழியைத் தேர்ந்தெடுக்கவும்.</string>
 </resources>

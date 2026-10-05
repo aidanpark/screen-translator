@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">ತಾಂತ್ರಿಕ</string>
     <string name="translation_domain_business">ವ್ಯವಹಾರ</string>
   <string name="api_key_clear">ತೆರವುಗೊಳಿಸಿ</string>
+  <string name="error_unsupported_script">ಇದು %1$s ಪಠ್ಯದಂತೆ ಕಾಣುತ್ತದೆ, ಇದನ್ನು ಪರದೆಯಿಂದ ಓದಲಾಗುವುದಿಲ್ಲ. ಅನುವಾದಿಸಲು Claude ಎಂಜಿನ್‌ಗೆ ಬದಲಿಸಿ, ಅಥವಾ ಬೇರೆ ಭಾಷೆಯಾಗಿದ್ದರೆ ಮೂಲ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.</string>
 </resources>

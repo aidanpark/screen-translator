@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Техніка</string>
     <string name="translation_domain_business">Бізнес</string>
   <string name="api_key_clear">Очистити</string>
+  <string name="error_unsupported_script">Схоже, це текст мовою «%1$s», який неможливо прочитати з екрана. Щоб перекласти, перейдіть на Claude або виберіть мову оригіналу, якщо це інша мова.</string>
 </resources>

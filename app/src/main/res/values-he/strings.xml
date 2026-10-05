@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">טכני</string>
     <string name="translation_domain_business">עסקי</string>
   <string name="api_key_clear">ניקוי</string>
+  <string name="error_unsupported_script">נראה שזה טקסט ב%1$s, שלא ניתן לקרוא מהמסך. כדי לתרגם, עברו למנוע Claude, או בחרו את שפת המקור אם זו שפה אחרת.</string>
 </resources>

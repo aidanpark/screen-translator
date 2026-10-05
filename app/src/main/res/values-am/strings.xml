@@ -121,5 +121,6 @@
     <string name="translation_domain_tech">ቴክኒካዊ</string>
     <string name="translation_domain_business">ንግድ</string>
   <string name="api_key_clear">አጽዳ</string>
+  <string name="error_unsupported_script">ይህ የ%1$s ጽሑፍ ይመስላል፣ ከማያ ገጹ ሊነበብ አይችልም። ለመተርጎም ወደ Claude ሞተር ይቀይሩ፣ ወይም ሌላ ቋንቋ ከሆነ የምንጭ ቋንቋውን ይምረጡ።</string>
 </resources>
 

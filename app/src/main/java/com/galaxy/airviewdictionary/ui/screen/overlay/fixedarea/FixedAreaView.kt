@@ -57,6 +57,7 @@ import com.galaxy.airviewdictionary.data.local.vision.model.VisionResponse
 import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
 import com.galaxy.airviewdictionary.data.remote.translation.NoTextInImageException
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationErrorMessages
+import com.galaxy.airviewdictionary.data.remote.translation.UnsupportedScriptException
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationResponse
 import com.galaxy.airviewdictionary.extensions.isNetworkAvailable
@@ -526,9 +527,33 @@ open class FixedAreaView : OverlayView() {
             sourceLanguageCode = if (ImageTranslation.isImageOnlyLanguage(sourceLanguageCode)) "auto" else sourceLanguageCode,
             // 영역 안의 글 전체가 필요하다 — 검출만 하고 멈추지 않는다.
             readAll = true,
+            // 쉬지 않고 캡처한다 — 관문이 개입해도 넣은 ML Kit 인식을 기다려 작업이 쌓이지 않게 한다
+            waitOnGate = true,
         )
 
         if (visionResponse !is VisionResponse.Success) {
+            return
+        }
+
+        // auto 의 지원되지 않는 문자권 관문(성능 P7)이 개입했다 — 읽지 못했으니 영역 이미지의 지문으로 바뀜을 보고, Claude 이미지 번역을
+        // 쓸 수 있으면 영역을 보내고 아니면 "읽을 수 없는 문자" 안내를 띄운다
+        visionResponse.result.unsupportedScript?.let { verdict ->
+            val fingerprint = try {
+                targetHandleViewModel.visionRepository.imageFingerprint(selectedAreaBitmap).replace("\n", " ")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.tag(TAG).e(e, "image fingerprint 실패")
+                return
+            }
+            val previous = detectedString
+            if (previous != null && (previous == fingerprint || ImageTranslation.sameFingerprint(previous, fingerprint))) return
+            detectedString = fingerprint
+            if (targetHandleViewModel.translationRepository.claudeImageReady(translationKitType)) {
+                translateAreaImage(context, captureResponse.bitmap, selectedArea, sourceLanguageCode)
+            } else {
+                translationFlow.value = "⚠ " + TranslationErrorMessages.resolve(context, UnsupportedScriptException(verdict.language))
+            }
             return
         }
 
@@ -575,7 +600,11 @@ open class FixedAreaView : OverlayView() {
             translationFlow.value = ""
             return
         }
+        translateAreaImage(context, screen, selectedArea, sourceLanguageCode)
+    }
 
+    /** 영역 이미지를 Claude 에 보내 번역한다(§25). 바뀜은 부르는 쪽이 이미 보았다. */
+    private suspend fun translateAreaImage(context: Context, screen: Bitmap, selectedArea: Rect, sourceLanguageCode: String) {
         val sourceLanguagePref: String = targetHandleViewModel.preferenceRepository.sourceLanguageCodeFlow.first()
         val targetLanguageCode: String = targetHandleViewModel.preferenceRepository.targetLanguageCodeFlow.first()
         val crop = withContext(Dispatchers.Default) { ImageCrop.area(screen, selectedArea) } ?: return

@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">තාක්ෂණික</string>
     <string name="translation_domain_business">ව්‍යාපාරික</string>
   <string name="api_key_clear">හිස් කරන්න</string>
+  <string name="error_unsupported_script">මෙය %1$s පෙළක් ලෙස පෙනේ, එය තිරයෙන් කියවිය නොහැක. පරිවර්තනයට Claude එන්ජිමට මාරු වන්න, නැතහොත් වෙනත් භාෂාවක් නම් මූලාශ්‍ර භාෂාව තෝරන්න.</string>
 </resources>

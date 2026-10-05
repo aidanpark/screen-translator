@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">Tegnies</string>
     <string name="translation_domain_business">Besigheid</string>
   <string name="api_key_clear">Vee uit</string>
+  <string name="error_unsupported_script">Dit lyk soos %1$s-teks, wat nie van die skerm af gelees kan word nie. Skakel oor na die Claude-enjin om dit te vertaal, of kies die brontaal as dit \'n ander taal is.</string>
 </resources>
 
 

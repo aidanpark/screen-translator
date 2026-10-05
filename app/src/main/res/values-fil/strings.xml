@@ -122,4 +122,5 @@
     <string name="translation_domain_tech">Teknikal</string>
     <string name="translation_domain_business">Negosyo</string>
   <string name="api_key_clear">I-clear</string>
+  <string name="error_unsupported_script">Mukhang tekstong %1$s ito, na hindi mababasa mula sa screen. Lumipat sa Claude engine para isalin ito, o piliin ang source language kung ibang wika ito.</string>
 </resources>

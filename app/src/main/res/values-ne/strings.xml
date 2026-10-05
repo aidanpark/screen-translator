@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">प्राविधिक</string>
     <string name="translation_domain_business">व्यवसाय</string>
   <string name="api_key_clear">खाली गर्नुहोस्</string>
+  <string name="error_unsupported_script">यो %1$s पाठ जस्तो देखिन्छ, जुन स्क्रिनबाट पढ्न सकिँदैन। अनुवाद गर्न Claude इन्जिनमा जानुहोस्, वा अर्को भाषा हो भने स्रोत भाषा छान्नुहोस्।</string>
 </resources>

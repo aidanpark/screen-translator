@@ -388,6 +388,16 @@ open class AreaSelectionView : OverlayView() {
                 return@launchInOverlayViewCoroutineScope
             }
 
+            // auto 의 지원되지 않는 문자권 관문(성능 P7)이 개입했다 — 읽지 못한 글 대신 영역 이미지를 대상으로 둔다.
+            // Claude 이미지 번역을 쓸 수 있으면 영역을 보내고, 아니면 "읽을 수 없는 문자" 안내가 뜬다(TargetHandleViewModel)
+            visionResponse.result.unsupportedScript?.let { verdict ->
+                targetHandleViewModel.visionResultFlow.value = Transaction(
+                    captureResponse.bitmap, OcrText("", emptyList()), visionResponse.result.detectedLanguageCode, emptyList(),
+                    image = ImageTargets.Area(Rect(selectedArea)), unsupportedScript = verdict,
+                )
+                return@launchInOverlayViewCoroutineScope
+            }
+
             targetHandleViewModel.visionResultFlow.value = visionResponse.result
         }
     }

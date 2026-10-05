@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">Տեխնիկական</string>
     <string name="translation_domain_business">Բիզնես</string>
   <string name="api_key_clear">Մաքրել</string>
+  <string name="error_unsupported_script">Սա կարծես %1$s տեքստ է, որը հնարավոր չէ կարդալ էկրանից։ Թարգմանելու համար անցեք Claude շարժիչին կամ ընտրեք սկզբնաղբյուր լեզուն, եթե այլ լեզու է։</string>
 </resources>
 
 

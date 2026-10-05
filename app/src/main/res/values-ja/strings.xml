@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">技術</string>
     <string name="translation_domain_business">ビジネス</string>
   <string name="api_key_clear">クリア</string>
+  <string name="error_unsupported_script">これは%1$sの文字のようで、画面から読み取れません。翻訳するには Claude エンジンに切り替えるか、別の言語の場合は原文の言語を選択してください。</string>
 </resources>

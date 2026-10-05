@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">Texniki</string>
     <string name="translation_domain_business">Biznes</string>
   <string name="api_key_clear">Təmizlə</string>
+  <string name="error_unsupported_script">Bu, ekrandan oxuna bilməyən %1$s mətninə bənzəyir. Tərcümə etmək üçün Claude mühərrikinə keçin və ya başqa dildirsə, mənbə dilini seçin.</string>
 </resources>
 
 

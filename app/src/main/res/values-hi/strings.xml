@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">तकनीकी</string>
     <string name="translation_domain_business">व्यवसाय</string>
   <string name="api_key_clear">साफ़ करें</string>
+  <string name="error_unsupported_script">यह %1$s पाठ जैसा लगता है, जिसे स्क्रीन से पढ़ा नहीं जा सकता। अनुवाद के लिए Claude इंजन पर जाएँ, या कोई और भाषा हो तो स्रोत भाषा चुनें।</string>
 </resources>

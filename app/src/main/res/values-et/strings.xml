@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">Tehniline</string>
     <string name="translation_domain_business">Äri</string>
   <string name="api_key_clear">Tühjenda</string>
+  <string name="error_unsupported_script">See näib olevat %1$s tekst, mida ei saa ekraanilt lugeda. Tõlkimiseks vahetage Claude\'i mootori vastu või valige lähtekeel, kui see on mõni muu keel.</string>
 </resources>
 
 

@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">Τεχνικά</string>
     <string name="translation_domain_business">Επιχειρήσεις</string>
   <string name="api_key_clear">Διαγραφή</string>
+  <string name="error_unsupported_script">Φαίνεται κείμενο σε %1$s, που δεν μπορεί να διαβαστεί από την οθόνη. Αλλάξτε στη μηχανή Claude για μετάφραση ή επιλέξτε τη γλώσσα προέλευσης αν είναι άλλη γλώσσα.</string>
 </resources>
 
 

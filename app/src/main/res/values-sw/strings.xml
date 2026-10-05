@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">Kiufundi</string>
     <string name="translation_domain_business">Biashara</string>
   <string name="api_key_clear">Futa</string>
+  <string name="error_unsupported_script">Hii inaonekana kama maandishi ya %1$s, ambayo hayawezi kusomwa kutoka kwenye skrini. Badilisha hadi Claude ili kuyatafsiri, au chagua lugha chanzo kama ni lugha nyingine.</string>
 </resources>
 
 

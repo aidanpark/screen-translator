@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Technique</string>
     <string name="translation_domain_business">Professionnel</string>
   <string name="api_key_clear">Effacer</string>
+  <string name="error_unsupported_script">Cela ressemble à du texte en %1$s, qui ne peut pas être lu à l\'écran. Passez au moteur Claude pour le traduire, ou choisissez la langue source s\'il s\'agit d\'une autre langue.</string>
 </resources>

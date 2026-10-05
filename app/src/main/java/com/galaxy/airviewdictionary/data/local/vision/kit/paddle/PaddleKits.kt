@@ -1,5 +1,6 @@
 package com.galaxy.airviewdictionary.data.local.vision.kit.paddle
 
+import ai.onnxruntime.OnnxTensor
 import android.graphics.Bitmap
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrBlock
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrLine
@@ -12,6 +13,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.nio.FloatBuffer
 import java.util.IdentityHashMap
 
 /**
@@ -43,6 +45,43 @@ class PaddleKits(files: PaddleModelFiles) {
         if (!PaddleSwitch.enabled) return null
         val base = languageCode.substringBefore('-')
         return scripts.entries.firstOrNull { base in it.value.languages }?.key?.takeIf { it.isReady() }
+    }
+
+    /**
+     * auto 의 지원되지 않는 문자권 관문(성능 P7, [ScriptGate]). [detected] 의 넓은 줄을 문자 판별기에 넣어, 읽을 엔진이 없는 문자권이라고
+     * 확신하면 그 판정을 돌려준다. 판별 모델이 아직 없거나(팩을 받는 중) 스위치가 꺼져 있거나 줄이 모자라면 null — 관문이 개입하지 않는다.
+     */
+    suspend fun scriptGate(screen: Bitmap, detected: OcrText): ScriptGate.Verdict? = withContext(Dispatchers.Default) {
+        if (!PaddleSwitch.autoEnabled) return@withContext null
+        val boxes = detected.lines.mapNotNull { line -> line.boundingBox?.let { intArrayOf(it.left, it.top, it.right, it.bottom) } }
+        val lines = ScriptGate.pickLines(boxes, screen.width)
+        if (lines.size < ScriptGate.MIN_LINES) return@withContext null
+        val threads = gateThreads; val spinning = gateSpinning
+        val session = sessions.session(ScriptGate.MODEL, threads, keepArena = true, spinning = spinning, key = "${ScriptGate.MODEL}/$threads/$spinning")
+            ?: return@withContext null
+        // 줄마다 따로 전처리한다(S26 에서 줄 12개 직렬 13ms)
+        val inputs = coroutineScope {
+            lines.map { box ->
+                async {
+                    val c = ScriptGate.cropRect(box, screen.width, screen.height)
+                    val cw = c[2] - c[0]; val ch = c[3] - c[1]
+                    val crop = IntArray(cw * ch)
+                    screen.getPixels(crop, 0, cw, c[0], c[1], cw, ch)
+                    ScriptGate.cropInput(crop, cw, ch)
+                }
+            }.awaitAll()
+        }
+        val batch = FloatBuffer.allocate(lines.size * ScriptGate.H * ScriptGate.W)
+        for (input in inputs) batch.put(input)
+        batch.rewind()
+        val shape = longArrayOf(lines.size.toLong(), 1, ScriptGate.H.toLong(), ScriptGate.W.toLong())
+        OnnxTensor.createTensor(sessions.env, batch, shape).use { input ->
+            session.run(mapOf("x" to input)).use { out ->
+                @Suppress("UNCHECKED_CAST")
+                val logits = (out[0].value as Array<FloatArray>)
+                ScriptGate.judge(logits.map { ScriptGate.softmax(it) })
+            }
+        }
     }
 
     /**
@@ -142,6 +181,14 @@ class PaddleKits(files: PaddleModelFiles) {
         val LANGUAGES: Set<String> = (ARABIC_LANGUAGES + EAST_SLAVIC_LANGUAGES + THAI_LANGUAGES).toSet()
 
         private const val SAMPLE_LINES = 4
+
+        /** 관문 판별의 추론 스레드 — 줄 12개 한 번이다. S26 에서 2스레드 49ms · 4스레드 31ms(성능 P7 기기 측정, 조건 50ms). 기기 비교 시험이 바꾼다. */
+        @Volatile
+        internal var gateThreads = 4
+
+        /** 관문 추론 스레드가 일이 끝난 뒤 기다리며 CPU 를 도는가(ONNX Runtime 기본값). 기기 비교 시험이 바꾼다. */
+        @Volatile
+        internal var gateSpinning = true
         private const val MIN_OWN_FRACTION = 0.5
         private const val MIN_OWN_LETTERS = 10
         private const val MIN_MEAN_CONFIDENCE = 0.4

@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">Műszaki</string>
     <string name="translation_domain_business">Üzleti</string>
   <string name="api_key_clear">Törlés</string>
+  <string name="error_unsupported_script">Ez %1$s nyelvű szövegnek tűnik, amely nem olvasható le a képernyőről. A fordításhoz váltson a Claude motorra, vagy válassza ki a forrásnyelvet, ha más nyelvről van szó.</string>
 </resources>
 
 

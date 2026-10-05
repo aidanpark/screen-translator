@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Techniczne</string>
     <string name="translation_domain_business">Biznes</string>
   <string name="api_key_clear">Wyczyść</string>
+  <string name="error_unsupported_script">To wygląda na tekst w języku %1$s, którego nie można odczytać z ekranu. Aby go przetłumaczyć, przełącz się na Claude albo wybierz język źródłowy, jeśli to inny język.</string>
 </resources>

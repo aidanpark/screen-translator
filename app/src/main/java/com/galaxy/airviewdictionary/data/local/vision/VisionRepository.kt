@@ -18,6 +18,7 @@ import com.galaxy.airviewdictionary.data.local.vision.model.Word
 import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKit
 import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKitSelector
 import com.galaxy.airviewdictionary.data.local.vision.kit.paddle.PaddleKits
+import com.galaxy.airviewdictionary.data.local.vision.kit.paddle.ScriptGate
 import com.galaxy.airviewdictionary.data.local.vision.kit.paddle.PaddleSwitch
 import com.galaxy.airviewdictionary.data.local.vision.kit.paddle.UrduLetters
 import com.google.mlkit.nl.languageid.LanguageIdentification
@@ -32,6 +33,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -71,11 +73,22 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
      * 검출이 싼 엔진은 줄 위치만 찾고 문단을 줄 상자로 묶어 돌려준다 — 글은 포인터가 멈춘 문단만 [readParagraph] 로 읽는다.
      * 화면 전체 글이 필요한 곳(선택·고정 영역)은 [readAll] 로 끝까지 읽힌 결과를 받는다. ML Kit 은 검출에서 다 읽으므로
      * 어느 쪽이든 결과가 같다.
+     *
+     * [waitOnGate] 는 auto 의 지원되지 않는 문자권 관문(성능 P7)이 개입했을 때 이미 넣은 ML Kit 인식을 끝까지 기다릴지다. 기다리지 않으면
+     * 빨리 반환하지만 그 작업은 ML Kit 안에서 계속 돈다 — 쉬지 않고 캡처하는 고정 영역은 기다려서 작업이 쌓이지 않게 한다.
      */
-    suspend fun request(bitmap: Bitmap, sourceLanguageCode: String, readAll: Boolean = false): VisionResponse = coroutineScope {
+    suspend fun request(bitmap: Bitmap, sourceLanguageCode: String, readAll: Boolean = false, waitOnGate: Boolean = false): VisionResponse = coroutineScope {
         Timber.tag(TAG).i("#### request() ####  $sourceLanguageCode")
         try {
-            val detected = detect(bitmap, sourceLanguageCode)
+            val detected = detect(bitmap, sourceLanguageCode, waitOnGate)
+            detected.unsupportedScript?.let { verdict ->
+                // 관문이 개입했다(성능 P7) — 글을 읽지 않고 검출 줄로 묶은 이미지 대상으로 돌려준다(Claude 이미지 번역 또는 안내)
+                val paragraphs = withContext(Dispatchers.Default) { detectorParagraphs(bitmap, detected.ocr.lines, sourceLanguageCode).first }
+                paragraphs.forEach { it.languageCode = sourceLanguageCode }
+                return@coroutineScope VisionResponse.Success(
+                    Transaction(bitmap, detected.ocr, sourceLanguageCode, paragraphs, image = ImageTargets.Detected, unsupportedScript = verdict)
+                )
+            }
             // auto 에서 PP-OCRv5 가 이기면 그 언어를 지정한 것처럼 조립한다 — 검출만 된 화면으로 두고 가리킨 문단만 읽는다(§13)
             val language = if (detected.paddleWon) detected.identifiedLanguageCode!! else sourceLanguageCode
             VisionResponse.Success(
@@ -285,13 +298,15 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
         val kit: VisionKit, val ocr: OcrText, val identifiedLanguageCode: String?, val paddleWon: Boolean = false,
         /** auto 가 라틴 인식기 하나로 끝냈다(성능 P4-2). */
         val latinStopped: Boolean = false,
+        /** auto 의 지원되지 않는 문자권 관문이 개입했다(성능 P7). 그때 [ocr] 는 PP-OCRv5 검출(줄 위치만)이다. */
+        val unsupportedScript: ScriptGate.Verdict? = null,
     )
 
     /**
      * 소스 언어에 맞는 엔진 후보로 검출한다. 후보가 여럿이면(auto) 모두 돌려 결과 하나를 고른다.
-     * 고른 결과를 낸 엔진도 함께 돌려준다 — 남은 줄은 그 엔진이 읽는다.
+     * 고른 결과를 낸 엔진도 함께 돌려준다 — 남은 줄은 그 엔진이 읽는다. [waitOnGate] 는 [request] 를 본다.
      */
-    internal suspend fun detect(bitmap: Bitmap, sourceLanguageCode: String): Detected = coroutineScope {
+    internal suspend fun detect(bitmap: Bitmap, sourceLanguageCode: String, waitOnGate: Boolean = false): Detected = coroutineScope {
         // auto 는 PP-OCRv5 표본도 같이 돌린다. ML Kit 의 직렬 줄(§10.6) 밖이라 동시에 돈다(§13.3). 스위치로 끄면 ML Kit 만(§19)
         // 검출과 표본 읽기를 나눈다 — 검출은 라틴 멈춤의 "덮은 비율"에도 쓴다(성능 P4-2, .docs/perf-experiment-plan.md §5)
         val paddleDetection: Deferred<OcrText?>? = if (sourceLanguageCode == "auto" && PaddleSwitch.autoEnabled) kits.paddle?.let { paddle ->
@@ -319,20 +334,48 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
             }
         }
 
-        // 조건에 맞는 엔진으로 OCR 을 수행한다
-        suspend fun detectWith(candidates: List<VisionKit>): List<Pair<VisionKit, OcrText>> = candidates.map { kit ->
+        // 지원되지 않는 문자권 관문(성능 P7, .docs/perf-experiment-plan.md §7) — 검출이 끝나는 대로 판별한다. 라틴 인식기와 동시에 돌고,
+        // 판정은 관문이 먼저다: 개입하면 라틴 결과를 버리고 나머지 인식기를 시작하지 않는다
+        val gate: Deferred<ScriptGate.Verdict?>? = paddleDetection?.takeIf { ScriptGate.enabled }?.let { detection ->
             async {
                 try {
-                    Timber.tag(TAG).d("kit : ${kit.name}")
-                    val text: OcrText = kit.detect(bitmap)
-                    Timber.tag(TAG).d("_processSuspend text : ${text.text}")
-                    kit to text
+                    detection.await()?.let { kits.paddle!!.scriptGate(bitmap, it) }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
-                    Timber.tag(TAG).e("Error processing text recognition: ${e.message}")
-                    null // 실패할 경우 null 반환
+                    Timber.tag(TAG).e("관문 판별 실패: ${e.message}")
+                    null
                 }
             }
-        }.awaitAll().filterNotNull()
+        }
+        suspend fun gated(kit: VisionKit): Detected? {
+            val verdict = gate?.await() ?: return null
+            val detection = paddleDetection?.await() ?: return null
+            paddleSample?.cancel()
+            Timber.tag(TAG).i("auto: 지원되지 않는 문자권 관문 개입 (${verdict.script})")
+            return Detected(kit, detection, verdict.language, unsupportedScript = verdict)
+        }
+
+        // 조건에 맞는 엔진으로 OCR 을 수행한다
+        // 자기 범위에서 돌린다 — 바깥 범위의 async 면 부르는 쪽을 취소해도 인식기가 계속 돌고, detect 가 그 끝을 기다린다
+        // (관문이 개입한 화면이 나머지 넷이 끝날 때까지 0.6~1초 늦게 반환되었다, 성능 P7 §7.5)
+        suspend fun detectWith(candidates: List<VisionKit>): List<Pair<VisionKit, OcrText>> = coroutineScope {
+            candidates.map { kit ->
+                async {
+                    try {
+                        Timber.tag(TAG).d("kit : ${kit.name}")
+                        val text: OcrText = kit.detect(bitmap)
+                        Timber.tag(TAG).d("_processSuspend text : ${text.text}")
+                        kit to text
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).e("Error processing text recognition: ${e.message}")
+                        null // 실패할 경우 null 반환
+                    }
+                }
+            }.awaitAll().filterNotNull()
+        }
 
         // 고르기는 모델 팩이 준비됐는지 본다 — 파일을 볼 수 있어 주 스레드에서 하지 않는다
         val candidates = withContext(Dispatchers.Default) { kits.candidatesFor(sourceLanguageCode) }
@@ -340,16 +383,31 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
         if (paddleDetection != null && candidates.size > 1 && AutoLatinStop.enabled) {
             // auto — 라틴 인식기 하나를 먼저 돌려, 라틴 화면이 확실하면 거기서 끝낸다(성능 P4-2). 나머지 넷은 멈추지 않기로 정한 뒤에야
             // 넣는다 — ML Kit 은 넣은 작업을 취소하지 못하고 한 줄로 처리한다(§10.6). 후보 순서의 첫째가 라틴이다(VisionKitSelector.all).
-            val latinResults = detectWith(candidates.take(1))
-            val latinOcr = latinResults.firstOrNull()?.second
-            if (latinOcr != null && latinStops(latinOcr, paddleDetection, paddleSample!!, bitmap)) {
-                paddleSample.cancel()
-                val language = identifyLanguage(latinOcr.text)
-                Timber.tag(TAG).i("auto: 라틴에서 멈춤 ($language)")
-                return@coroutineScope Detected(candidates.first(), latinOcr, language, latinStopped = true)
+            val latin = async { detectWith(candidates.take(1)) }
+            // 관문이 라틴 인식기보다 먼저 판정하면 라틴 결과를 기다리지 않는다(성능 P7 §7.5). 넣어 둔 라틴 작업은 ML Kit 안에서 끝까지 실행된다
+            if (gate != null && select { gate.onAwait { true }; latin.onAwait { false } }) {
+                gated(candidates.first())?.let { if (waitOnGate) latin.join() else latin.cancel(); return@coroutineScope it }
             }
-            results = latinResults + detectWith(candidates.drop(1))
+            val latinResults = latin.await()
+            val latinOcr = latinResults.firstOrNull()?.second
+            if (latinOcr == null || !AutoLatinStop.passesTextChecks(latinOcr.lines.map { it.text })) {
+                // 라틴 화면이 아니다 — 나머지 넷을 관문을 기다리지 않고 바로 넣는다. 관문을 기다렸다 넣으면 검출 · 판별만큼(S26 100~440ms)
+                // 지원 문자권 화면이 느려졌다(성능 P7 기기 측정). 관문이 개입하면 그 결과를 기다리지 않고 버린다(ML Kit 대기는 취소된다)
+                val rest = async { detectWith(candidates.drop(1)) }
+                gated(candidates.first())?.let { if (waitOnGate) rest.join() else rest.cancel(); return@coroutineScope it }
+                results = latinResults + rest.await()
+            } else {
+                gated(candidates.first())?.let { return@coroutineScope it }
+                if (latinStops(latinOcr, paddleDetection, paddleSample!!, bitmap)) {
+                    paddleSample.cancel()
+                    val language = identifyLanguage(latinOcr.text)
+                    Timber.tag(TAG).i("auto: 라틴에서 멈춤 ($language)")
+                    return@coroutineScope Detected(candidates.first(), latinOcr, language, latinStopped = true)
+                }
+                results = latinResults + detectWith(candidates.drop(1))
+            }
         } else {
+            gated(candidates.first())?.let { return@coroutineScope it }
             results = detectWith(candidates)
         }
         if (results.isEmpty() && paddleSample == null) {

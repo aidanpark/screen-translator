@@ -122,4 +122,5 @@
     <string name="translation_domain_tech">Техникалық</string>
     <string name="translation_domain_business">Бизнес</string>
   <string name="api_key_clear">Тазалау</string>
+  <string name="error_unsupported_script">Бұл экраннан оқылмайтын %1$s мәтініне ұқсайды. Аудару үшін Claude қозғалтқышына ауысыңыз немесе басқа тіл болса, бастапқы тілді таңдаңыз.</string>
 </resources>

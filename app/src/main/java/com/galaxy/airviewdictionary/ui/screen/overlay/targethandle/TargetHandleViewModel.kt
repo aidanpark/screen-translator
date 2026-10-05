@@ -52,6 +52,7 @@ import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationRepository
 import com.galaxy.airviewdictionary.data.local.vision.model.TranslationTarget
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationResponse
+import com.galaxy.airviewdictionary.data.remote.translation.UnsupportedScriptException
 import com.galaxy.airviewdictionary.extensions.finishService
 import com.galaxy.airviewdictionary.extensions.voiceNameMatchesLanguage
 import com.galaxy.airviewdictionary.extensions.gotoStore
@@ -964,7 +965,11 @@ class TargetHandleViewModel(
                                     visionText = pointerPositionedVisionText,
                                 )
                                 currentTargetFlow.value = target
-                                val response = if (image) {
+                                val gateVerdict = visionResultTransaction.unsupportedScript
+                                val response = if (gateVerdict != null && !translationRepository.claudeImageReady(translationKitType)) {
+                                    // 지원되지 않는 문자권 관문(성능 P7)이 개입했는데 Claude 이미지 번역을 쓸 수 없다 — 번역 대신 안내
+                                    TranslationResponse.Error(UnsupportedScriptException(gateVerdict.language))
+                                } else if (image) {
                                     requestImageTranslation(visionResultTransaction, pointerPositionedVisionText, found.position, sourceLanguagePref, targetLanguageCode)
                                 } else {
                                     val contextText = buildContextText(

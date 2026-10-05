@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Technisch</string>
     <string name="translation_domain_business">Zakelijk</string>
   <string name="api_key_clear">Wissen</string>
+  <string name="error_unsupported_script">Dit lijkt tekst in het %1$s, die niet van het scherm kan worden gelezen. Schakel over naar de Claude-engine om het te vertalen, of kies de brontaal als het een andere taal is.</string>
 </resources>

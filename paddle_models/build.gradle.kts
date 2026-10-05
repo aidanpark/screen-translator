@@ -13,7 +13,8 @@ assetPack {
 }
 
 // 모델 없이 번들을 만들면 PaddleOCR 문자권이 조용히 ML Kit 라틴으로 떨어진다. 번들을 만들 때 막는다.
-val requiredModels = listOf("det.onnx", "arabic_rec.onnx", "arabic_dict.txt", "eslav_rec.onnx", "eslav_dict.txt", "th_rec.onnx", "th_dict.txt")
+// script.onnx 는 auto 의 지원되지 않는 문자권 관문(성능 P7) — 직접 학습한 모델이라 저장소(tools/scriptid/model/)에 있고 export_models.sh 가 복사한다.
+val requiredModels = listOf("det.onnx", "arabic_rec.onnx", "arabic_dict.txt", "eslav_rec.onnx", "eslav_dict.txt", "th_rec.onnx", "th_dict.txt", "script.onnx")
 tasks.configureEach {
     if (name.contains("AssetPack", ignoreCase = true) || name.startsWith("generate")) {
         doFirst {

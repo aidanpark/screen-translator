@@ -174,6 +174,11 @@ class TranslationRepository @Inject constructor(
         kitType == TranslationKitType.CLAUDE &&
             withContext(Dispatchers.IO) { ImageTranslation.uses(kitType, sourceLanguageCode, claudeKit.available()) }
 
+    /** Claude 이미지 번역을 지금 쓸 수 있는가 — 엔진이 Claude 이고 키가 있고 원격 스위치가 켜져 있다. 지원되지 않는 문자권 관문(성능 P7)이 본다. */
+    suspend fun claudeImageReady(kitType: TranslationKitType): Boolean =
+        kitType == TranslationKitType.CLAUDE &&
+            withContext(Dispatchers.IO) { ImageTranslation.Switch.enabled && claudeKit.available() }
+
     /** 화면 조각을 Claude 에 보내 읽기와 번역을 맡긴다(AI 이미지 번역, §25). 이 길은 Claude 만 있다. */
     suspend fun requestImage(
         sourceLanguageCode: String,

@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Tehnika</string>
     <string name="translation_domain_business">Poslovno</string>
   <string name="api_key_clear">Očisti</string>
+  <string name="error_unsupported_script">Čini se da je ovo tekst na jeziku %1$s, koji se ne može pročitati sa zaslona. Za prijevod prijeđite na Claude ili odaberite izvorni jezik ako je riječ o drugom jeziku.</string>
 </resources>

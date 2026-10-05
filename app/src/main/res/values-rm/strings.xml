@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Tecnic</string>
     <string name="translation_domain_business">Affars</string>
   <string name="api_key_clear">Stizzar</string>
+  <string name="error_unsupported_script">Quai para dad esser text en %1$s, che na po betg vegnir legì dal visur. Mida al motor Claude per al translatar u tscherna la lingua da funtauna, sch\'i sa tracta d\'ina autra lingua.</string>
 </resources>

@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Tekninen</string>
     <string name="translation_domain_business">Liiketoiminta</string>
   <string name="api_key_clear">Tyhjennä</string>
+  <string name="error_unsupported_script">Tämä näyttää olevan tekstiä kielellä %1$s, jota ei voi lukea näytöltä. Vaihda Claude-moottoriin kääntääksesi sen tai valitse lähdekieli, jos kyse on toisesta kielestä.</string>
 </resources>

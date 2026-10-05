@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">Tekniskt</string>
     <string name="translation_domain_business">Affärer</string>
   <string name="api_key_clear">Rensa</string>
+  <string name="error_unsupported_script">Det här ser ut som text på %1$s, som inte kan läsas från skärmen. Byt till Claude-motorn för att översätta den, eller välj källspråket om det är ett annat språk.</string>
 </resources>
 
 

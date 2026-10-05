@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Técnico</string>
     <string name="translation_domain_business">Negocios</string>
   <string name="api_key_clear">Borrar</string>
+  <string name="error_unsupported_script">Parece texto en %1$s, que non se pode ler da pantalla. Cambia ao motor Claude para traducilo ou escolle o idioma de orixe se é outro idioma.</string>
 </resources>

@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Техникийн</string>
     <string name="translation_domain_business">Бизнес</string>
   <string name="api_key_clear">Цэвэрлэх</string>
+  <string name="error_unsupported_script">Энэ нь дэлгэцээс уншиж болохгүй %1$s бичвэр шиг харагдаж байна. Орчуулахын тулд Claude хөдөлгүүрт шилжих эсвэл өөр хэл бол эх хэлийг сонгоно уу.</string>
 </resources>

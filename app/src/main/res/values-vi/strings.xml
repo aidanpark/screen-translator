@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Kỹ thuật</string>
     <string name="translation_domain_business">Kinh doanh</string>
   <string name="api_key_clear">Xóa</string>
+  <string name="error_unsupported_script">Đây có vẻ là văn bản %1$s, không thể đọc từ màn hình. Hãy chuyển sang công cụ Claude để dịch, hoặc chọn ngôn ngữ nguồn nếu đó là ngôn ngữ khác.</string>
 </resources>

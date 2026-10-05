@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">Tæknilegt</string>
     <string name="translation_domain_business">Viðskipti</string>
   <string name="api_key_clear">Hreinsa</string>
+  <string name="error_unsupported_script">Þetta virðist vera texti á %1$s, sem ekki er hægt að lesa af skjánum. Skiptu yfir í Claude til að þýða hann, eða veldu upprunatungumálið ef þetta er annað tungumál.</string>
 </resources>
 
 

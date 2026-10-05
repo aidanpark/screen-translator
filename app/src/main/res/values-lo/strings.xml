@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">ເຕັກນິກ</string>
     <string name="translation_domain_business">ທຸລະກິດ</string>
   <string name="api_key_clear">ລ້າງ</string>
+  <string name="error_unsupported_script">ນີ້ເບິ່ງຄືຂໍ້ຄວາມພາສາ%1$s ທີ່ອ່ານຈາກໜ້າຈໍບໍ່ໄດ້. ປ່ຽນໄປໃຊ້ Claude ເພື່ອແປ ຫຼື ເລືອກພາສາຕົ້ນສະບັບຖ້າເປັນພາສາອື່ນ.</string>
 </resources>

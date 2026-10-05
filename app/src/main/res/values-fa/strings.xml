@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">فنی</string>
     <string name="translation_domain_business">کسب‌وکار</string>
   <string name="api_key_clear">پاک کردن</string>
+  <string name="error_unsupported_script">به نظر می‌رسد این متن به زبان %1$s است که از روی صفحه خوانده نمی‌شود. برای ترجمه به موتور Claude بروید یا اگر زبان دیگری است، زبان مبدأ را انتخاب کنید.</string>
 </resources>

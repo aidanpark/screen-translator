@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Teknis</string>
     <string name="translation_domain_business">Bisnis</string>
   <string name="api_key_clear">Hapus</string>
+  <string name="error_unsupported_script">Ini tampaknya teks %1$s, yang tidak dapat dibaca dari layar. Beralihlah ke mesin Claude untuk menerjemahkannya, atau pilih bahasa sumber jika itu bahasa lain.</string>
 </resources>

@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">ਤਕਨੀਕੀ</string>
     <string name="translation_domain_business">ਕਾਰੋਬਾਰ</string>
   <string name="api_key_clear">ਸਾਫ਼ ਕਰੋ</string>
+  <string name="error_unsupported_script">ਇਹ %1$s ਲਿਖਤ ਜਾਪਦੀ ਹੈ, ਜੋ ਸਕ੍ਰੀਨ ਤੋਂ ਪੜ੍ਹੀ ਨਹੀਂ ਜਾ ਸਕਦੀ। ਅਨੁਵਾਦ ਲਈ Claude ਇੰਜਣ \'ਤੇ ਜਾਓ, ਜਾਂ ਹੋਰ ਭਾਸ਼ਾ ਹੋਵੇ ਤਾਂ ਸਰੋਤ ਭਾਸ਼ਾ ਚੁਣੋ।</string>
 </resources>

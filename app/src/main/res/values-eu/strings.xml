@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">Teknikoa</string>
     <string name="translation_domain_business">Negozioak</string>
   <string name="api_key_clear">Garbitu</string>
+  <string name="error_unsupported_script">%1$s testua dirudi, eta ezin da pantailatik irakurri. Itzultzeko, aldatu Claude motorrera, edo aukeratu jatorrizko hizkuntza beste hizkuntza bat bada.</string>
 </resources>

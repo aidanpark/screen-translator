@@ -121,4 +121,5 @@
     <string name="translation_domain_tech">സാങ്കേതികം</string>
     <string name="translation_domain_business">ബിസിനസ്</string>
   <string name="api_key_clear">മായ്ക്കുക</string>
+  <string name="error_unsupported_script">ഇത് %1$s എഴുത്താണെന്ന് തോന്നുന്നു, സ്ക്രീനിൽ നിന്ന് വായിക്കാനാകില്ല. വിവർത്തനം ചെയ്യാൻ Claude എഞ്ചിനിലേക്ക് മാറുക, അല്ലെങ്കിൽ മറ്റൊരു ഭാഷയാണെങ്കിൽ ഉറവിട ഭാഷ തിരഞ്ഞെടുക്കുക.</string>
 </resources>

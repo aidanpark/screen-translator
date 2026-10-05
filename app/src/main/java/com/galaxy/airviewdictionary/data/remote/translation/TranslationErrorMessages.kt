@@ -15,6 +15,10 @@ import java.io.IOException
 object TranslationErrorMessages {
 
     fun resolve(context: Context, t: Throwable): String {
+        if (t is UnsupportedScriptException) {
+            val name = java.util.Locale.forLanguageTag(t.languageCode).getDisplayLanguage(context.resources.configuration.locales[0])
+            return context.getString(R.string.error_unsupported_script, name)
+        }
         val res = when (t) {
             is HttpException -> when (t.code()) {
                 401, 403 -> R.string.error_translate_invalid_key
@@ -48,3 +52,9 @@ object TranslationErrorMessages {
             .any { body.contains(it, ignoreCase = true) }
     }
 }
+
+/**
+ * auto 의 지원되지 않는 문자권 관문(성능 P7)이 개입했는데 Claude 이미지 번역을 쓸 수 없다 — 번역 대신 "읽을 수 없는 문자" 안내를 띄운다.
+ * [languageCode] 는 그 문자권의 대표 언어(안내 문구에 기기 언어로 된 언어 이름을 쓴다).
+ */
+class UnsupportedScriptException(val languageCode: String) : Exception("unsupported script: $languageCode")

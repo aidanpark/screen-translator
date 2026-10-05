@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">تقني</string>
     <string name="translation_domain_business">أعمال</string>
   <string name="api_key_clear">مسح</string>
+  <string name="error_unsupported_script">يبدو أن هذا نص باللغة %1$s، ولا يمكن قراءته من الشاشة. انتقل إلى محرك Claude لترجمته، أو اختر لغة المصدر إذا كانت لغة أخرى.</string>
 </resources>
 
 

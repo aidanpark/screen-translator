@@ -121,6 +121,7 @@
     <string name="translation_domain_tech">Technika</string>
     <string name="translation_domain_business">Biznis</string>
   <string name="api_key_clear">Vymazať</string>
+  <string name="error_unsupported_script">Vyzerá to ako text v jazyku %1$s, ktorý sa nedá prečítať z obrazovky. Na preklad prepnite na Claude alebo vyberte zdrojový jazyk, ak ide o iný jazyk.</string>
 </resources>
 
 
