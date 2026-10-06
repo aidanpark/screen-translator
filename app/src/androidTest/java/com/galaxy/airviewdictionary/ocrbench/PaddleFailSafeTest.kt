@@ -109,7 +109,7 @@ class PaddleFailSafeTest {
         assertNull("같은 모델을 쓰는 다른 아랍 문자 언어도", kits.kitFor("fa"))
         assertNotNull("다른 문자권 엔진은 그대로다", kits.kitFor("ru"))
 
-        val candidates = kits.autoCandidates(screen(arabic))
+        val candidates = screen(arabic).let { s -> kits.autoDetect(s)?.let { kits.autoCandidates(s, it) } ?: emptyList() }
         assertTrue("auto 표본에서도 빠진다: ${candidates.map { it.kit.name }}", candidates.none { it.kit.name == "PADDLE_ARABIC" })
         assertEquals("깨진 모델은 한 번만 읽는다", 1, reads["arabic_rec.onnx"])
     }

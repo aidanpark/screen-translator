@@ -4,9 +4,6 @@ import com.galaxy.airviewdictionary.data.local.capture.ImageCrop
 import com.galaxy.airviewdictionary.data.local.vision.TextDetectMode
 import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKitSelector
 import com.galaxy.airviewdictionary.data.remote.firebase.RemoteConfigRepository
-import com.google.firebase.Firebase
-import com.google.firebase.remoteconfig.FirebaseRemoteConfig
-import com.google.firebase.remoteconfig.remoteConfig
 import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import java.util.Locale
@@ -27,6 +24,12 @@ object ImageTranslation {
     fun isImageOnlyLanguage(code: String): Boolean = !VisionKitSelector.hasReaderFor(code)
 
     /**
+     * 이미지로 보내지 않을 때 OCR 로 읽을 원문 언어 — 읽을 엔진이 없는 언어인데 이미지 번역을 못 하면(엔진 · 키 · 원격 스위치) auto 로 읽는다.
+     * 포인터 모드 · 영역 선택 · 고정 영역이 같이 쓴다(코드 정리 B2).
+     */
+    fun ocrLanguage(code: String): String = if (isImageOnlyLanguage(code)) AUTO else code
+
+    /**
      * 이 번역을 이미지로 보내는가. Claude 이고 키가 있을 때([claudeReady])만, 원문 언어가 이미지로만 번역하는 언어면 그렇다. auto 는 글로 보낸다.
      * 원격 스위치([enabled])가 꺼져 있으면 언제나 글로 보낸다.
      */
@@ -41,11 +44,7 @@ object ImageTranslation {
      * 없게 된다. 값을 아직 못 받았으면 켜진 것으로 본다(`PaddleSwitch` 와 같다).
      */
     object Switch {
-        val enabled: Boolean
-            get() = runCatching {
-                val value = Firebase.remoteConfig.getValue(RemoteConfigRepository.CLAUDE_IMAGE_ENABLED)
-                value.source == FirebaseRemoteConfig.VALUE_SOURCE_STATIC || value.asBoolean()
-            }.getOrDefault(true)
+        val enabled: Boolean get() = RemoteConfigRepository.switchOn(RemoteConfigRepository.CLAUDE_IMAGE_ENABLED)
     }
 
     /**

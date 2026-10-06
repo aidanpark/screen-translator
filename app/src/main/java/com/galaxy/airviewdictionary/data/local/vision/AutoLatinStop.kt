@@ -1,5 +1,7 @@
 package com.galaxy.airviewdictionary.data.local.vision
 
+import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKitSelector
+
 /**
  * auto 에서 ML Kit 라틴 인식기 하나로 끝내도 되는가 — 성능 실험 P4-2 로 채택한 규칙(`.docs/perf-experiment-plan.md` §5).
  * 라틴 화면이 확실할 때만 멈추고, 아니면 나머지 인식기와 PP-OCRv5 로 지금처럼 고른다.
@@ -37,10 +39,11 @@ internal object AutoLatinStop {
     fun isLatinReaderLanguage(code: String): Boolean {
         if (code == "und") return false
         // VisionKitSelector.candidatesFor 와 같은 판정(평가 스크립트도 그대로 흉내 냈다) — hi-Latn 같은 로마자 표기는 라틴으로 센다
-        return !(code.startsWith("zh") || code.startsWith("ko") || code.startsWith("ja") || code in DEVANAGARI)
+        // 데바나가리 표는 인식기 고르기와 같은 것을 쓴다(코드 정리 A5 — 따로 둔 4개짜리 표가 9개짜리 표와 갈라져 있었다. 더 있는 5개는 예전
+        // 엔진의 저장값이라 ML Kit 언어 감지가 내놓지 않는다)
+        // 한중일은 접두사로 본다(ja-Latn 도 비라틴) — 평가 때의 판정 그대로다(코드 정리 B4 는 표만 같이 쓰고 판정은 바꾸지 않았다)
+        return !(VisionKitSelector.MLKIT_SCRIPT_LANGUAGES.any { code.startsWith(it) } || code in VisionKitSelector.DEVANAGARI_LANGUAGES)
     }
-
-    private val DEVANAGARI = setOf("mr", "sa", "hi", "ne")
 
     fun chars(text: String): Int = text.count { !it.isWhitespace() }
 

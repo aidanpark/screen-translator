@@ -1,5 +1,6 @@
 package com.galaxy.airviewdictionary.ocrbench
 
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler
 import android.graphics.Rect
 import com.galaxy.airviewdictionary.data.local.vision.AssemblyParams
 import com.galaxy.airviewdictionary.data.local.vision.VisionRepository
@@ -122,11 +123,11 @@ object EvalMetrics {
 
         fun addHorizontal(words: List<com.galaxy.airviewdictionary.data.local.vision.model.Word>,
                           direction: WritingDirection, params: AssemblyParams) {
-            val lines = repository.groupWordsIntoLines(words, direction, params)
-            var grouped = repository.groupLinesIntoParagraphs(lines, direction, params)
+            val lines = ParagraphAssembler.groupWordsIntoLines(words, direction, params)
+            var grouped = ParagraphAssembler.groupLinesIntoParagraphs(lines, direction, params)
             if (post) grouped = grouped.flatMap {
-                repository.correctDetectAndSplitParagraphs(
-                    repository.detectAndSplitParagraphs(it, direction), direction
+                ParagraphAssembler.correctDetectAndSplitParagraphs(
+                    ParagraphAssembler.detectAndSplitParagraphs(it, direction), direction
                 )
             }
             units.addAll(words)
@@ -134,16 +135,13 @@ object EvalMetrics {
         }
 
         fun addLines(lines: List<Line>, direction: WritingDirection, vertical: Boolean, params: AssemblyParams) {
-            // 세로 분기는 프로덕션처럼 열 조각을 먼저 잇는다(스위치가 꺼져 있으면 그대로). 채점 단위는 잇기 전
-            // 조각이다 — 이은 줄은 조각의 단어 객체를 담으므로 아래 paragraphUnits 가 단어로 조각을 되찾는다.
             for (piece in lines) for (word in piece.words) pieceOf[word] = piece
-            val assembled = if (vertical) repository.mergeColumnPieces(lines, direction, params) else lines
-            var grouped = repository.groupLinesIntoParagraphs(assembled, direction, params)
+            var grouped = ParagraphAssembler.groupLinesIntoParagraphs(lines, direction, params)
             // 세로 분기는 쪼개기만 하고 다시 합치지 않는다. 가로 경로는 쪼갠 뒤 다시 합친다.
             if (post) grouped = grouped.flatMap {
                 if (vertical && !params.VERTICAL_SPLIT) return@flatMap listOf(it)
-                val split = repository.detectAndSplitParagraphs(it, direction)
-                if (vertical) split else repository.correctDetectAndSplitParagraphs(split, direction)
+                val split = ParagraphAssembler.detectAndSplitParagraphs(it, direction)
+                if (vertical) split else ParagraphAssembler.correctDetectAndSplitParagraphs(split, direction)
             }
             units.addAll(lines)
             for (p in grouped) { paragraphs.add(p); directions.add(direction); lineUnits.add(true) }

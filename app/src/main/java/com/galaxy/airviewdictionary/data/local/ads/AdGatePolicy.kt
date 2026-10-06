@@ -29,8 +29,15 @@ data class AdGatePolicy(
     val skipCooldownMillis: Long get() = skipCooldownSeconds.coerceAtLeast(0) * 1_000L
 
     companion object {
+        /** 앱 기본값(`remote_config_defaults.xml` 과 같다). 콘솔 JSON 에 빠진 필드는 이 값으로 채운다. */
+        val DEFAULT = AdGatePolicy(
+            failureThreshold = 3,
+            backoffHours = 24,
+            skipCooldownSeconds = 60,
+        )
+
         /**
-         * Remote Config 값이 없거나 형식이 깨졌을 때 쓰는 값.
+         * Remote Config 값의 형식이 깨졌을 때 쓰는 값.
          * 억제는 끄고 스킵 쿨다운만 유지해, 잘못된 설정으로 게이트가 통째로 사라지지 않게 한다.
          */
         val FALLBACK = AdGatePolicy(

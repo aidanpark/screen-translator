@@ -1,6 +1,5 @@
-package com.galaxy.airviewdictionary.ui.screen.overlay.targethandle
+package com.galaxy.airviewdictionary.data.remote.translation
 
-import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
 
 /**
  * 번역 파이프라인(포인터·고정 영역)이 원문 언어를 다루는 규칙 한 곳(`.docs/vision-engine-design.md` §23).

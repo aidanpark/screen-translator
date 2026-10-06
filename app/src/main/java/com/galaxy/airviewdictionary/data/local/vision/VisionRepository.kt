@@ -1,5 +1,14 @@
 package com.galaxy.airviewdictionary.data.local.vision
 
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler.detectVerticalWriting
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler.groupLinesIntoParagraphs
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler.detectAndSplitParagraphs
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler.ocrWordsToWords
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler.sortLinesToWords
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler.groupWordsIntoLines
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler.ocrLinesToWords
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler.splitColumns
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler.clampToBitmap
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
@@ -11,9 +20,8 @@ import com.galaxy.airviewdictionary.extensions.isValid
 import com.galaxy.airviewdictionary.data.remote.translation.Language
 import com.galaxy.airviewdictionary.data.local.vision.model.Line
 import com.galaxy.airviewdictionary.data.local.vision.model.Paragraph
-import com.galaxy.airviewdictionary.data.local.vision.model.Transaction
+import com.galaxy.airviewdictionary.data.local.vision.model.VisionResult
 import com.galaxy.airviewdictionary.data.local.vision.model.VisionResponse
-import com.galaxy.airviewdictionary.data.local.vision.model.VisionSingleLineText
 import com.galaxy.airviewdictionary.data.local.vision.model.Word
 import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKit
 import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKitSelector
@@ -42,16 +50,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
-import kotlin.math.abs
-import kotlin.math.min
-import kotlin.properties.Delegates
 
-
-/**
- * 1.5 폰트높이로 넓힌 단어 간격 가운데, 예전 한계(0.63)를 넘는 틈만 표의 열 틈 후보로 본다(3라운드 E2′).
- * 행 안의 벌어진 틈을 모을 때도 같은 값을 쓴다 — 그보다 좁은 틈은 보통 단어 사이다.
- */
-private const val COLUMN_GAP_MIN_RATIO = 0.63
 
 @Singleton
 class VisionRepository @Inject constructor(@ApplicationContext context: Context?) {
@@ -83,10 +82,9 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
             val detected = detect(bitmap, sourceLanguageCode, waitOnGate)
             detected.unsupportedScript?.let { verdict ->
                 // 관문이 개입했다(성능 P7) — 글을 읽지 않고 검출 줄로 묶은 이미지 대상으로 돌려준다(Claude 이미지 번역 또는 안내)
-                val paragraphs = withContext(Dispatchers.Default) { detectorParagraphs(bitmap, detected.ocr.lines, sourceLanguageCode).first }
-                paragraphs.forEach { it.languageCode = sourceLanguageCode }
+                val paragraphs = imageParagraphs(bitmap, detected.ocr.lines, sourceLanguageCode)
                 return@coroutineScope VisionResponse.Success(
-                    Transaction(bitmap, detected.ocr, sourceLanguageCode, paragraphs, image = ImageTargets.Detected, unsupportedScript = verdict)
+                    VisionResult(bitmap, detected.ocr, sourceLanguageCode, paragraphs, image = ImageTargets.Detected, unsupportedScript = verdict)
                 )
             }
             // auto 에서 PP-OCRv5 가 이기면 그 언어를 지정한 것처럼 조립한다 — 검출만 된 화면으로 두고 가리킨 문단만 읽는다(§13)
@@ -106,16 +104,15 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
     /**
      * AI 이미지 번역의 대상 찾기(§25) — 글은 읽지 않고 PP-OCRv5 검출기로 줄 위치만 찾아 문단으로 묶는다. 검출기는 문자와 무관하게
      * 줄을 찾으므로 읽을 엔진이 없는 문자에도 쓴다. 모델 팩이 아직 없거나 스위치로 꺼 두었으면 null — 부르는 쪽이 정한다.
-     * auto 는 가로쓰기(왼쪽에서 오른쪽)로 묶는다 — 쓰기 방향은 문단 묶기에만 쓰인다.
+     * 쓰기 방향은 원문 언어로 정하며 문단 묶기에만 쓰인다.
      */
     suspend fun requestImageTargets(bitmap: Bitmap, sourceLanguageCode: String): VisionResponse? {
         val paddle = kits.paddle ?: return null
         return try {
             val detected = paddle.detectLines(bitmap) ?: return null
-            val paragraphs = withContext(Dispatchers.Default) { detectorParagraphs(bitmap, detected.lines, sourceLanguageCode).first }
-            paragraphs.forEach { it.languageCode = sourceLanguageCode }
+            val paragraphs = imageParagraphs(bitmap, detected.lines, sourceLanguageCode)
             Timber.tag(TAG).i("image targets: ${detected.lines.size} lines -> ${paragraphs.size} paragraphs")
-            VisionResponse.Success(Transaction(bitmap, detected, sourceLanguageCode, paragraphs, image = ImageTargets.Detected))
+            VisionResponse.Success(VisionResult(bitmap, detected, sourceLanguageCode, paragraphs, image = ImageTargets.Detected))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -142,7 +139,7 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
     }
 
     /**
-     * [kit] 이 검출한 결과를 [Transaction] 으로 만든다. 검출기가 줄을 주는 엔진이고 끝까지 읽을 필요가 없으면 줄 상자로 문단만 묶는다.
+     * [kit] 이 검출한 결과를 [VisionResult] 로 만든다. 검출기가 줄을 주는 엔진이고 끝까지 읽을 필요가 없으면 줄 상자로 문단만 묶는다.
      * 표본이 줄을 이미 다 읽은 화면(auto 에서 PP-OCRv5 가 이긴 4줄 이하 화면)도 같다 — 다 읽혔다고 ML Kit 의 길(단어에서 줄을 유도하고
      * 세로쓰기를 판정하는 조립)로 보내면 같은 화면을 언어를 지정했을 때와 다르게 묶는다. 읽힌 줄은 [readParagraph] 가 다시 읽지 않는다.
      * auto 로 남은 화면(ML Kit)은 언제나 끝까지 읽는다 — 언어 감지가 글을 필요로 한다. 엔진을 고르며 이미 감지했으면
@@ -155,10 +152,10 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
         sourceLanguageCode: String,
         readAll: Boolean,
         identifiedLanguageCode: String? = null,
-    ): Transaction {
+    ): VisionResult {
         if (!readAll && sourceLanguageCode != "auto" && kit.linesFromDetector) {
             return withContext(Dispatchers.Default) {
-                detectedToTransaction(bitmap, kit, urduLettersIfNeeded(detected, sourceLanguageCode), sourceLanguageCode)
+                detectedToResult(bitmap, kit, urduLettersIfNeeded(detected, sourceLanguageCode), sourceLanguageCode)
             }
         }
         val read = recognizeAll(kit, detected, bitmap)
@@ -185,7 +182,7 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
             }
         }
 
-        return Transaction(bitmap, text, detectedLanguageCode, analyzedParagraphs)
+        return VisionResult(bitmap, text, detectedLanguageCode, analyzedParagraphs)
     }
 
     /**
@@ -193,15 +190,20 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
      * 폰트높이 = 상자 높이)를 세운 [Line] 을 검출기 기준값으로 문단에 묶고 쪼개기 후처리를 한다. 세로쓰기는 판정하지 않는다
      * (세로쓰기 문자는 ML Kit 이 다 읽는다).
      */
-    private fun detectedToTransaction(bitmap: Bitmap, kit: VisionKit, detected: OcrText, sourceLanguageCode: String): Transaction {
+    private fun detectedToResult(bitmap: Bitmap, kit: VisionKit, detected: OcrText, sourceLanguageCode: String): VisionResult {
         val (paragraphs, sources) = detectorParagraphs(bitmap, detected.lines, sourceLanguageCode)
         paragraphs.forEach { it.languageCode = sourceLanguageCode }
         Timber.tag(TAG).i("detected only: ${detected.lines.size} lines -> ${paragraphs.size} paragraphs")
-        return Transaction(bitmap, detected, sourceLanguageCode, paragraphs, UnreadParagraphs(kit, sources))
+        return VisionResult(bitmap, detected, sourceLanguageCode, paragraphs, UnreadParagraphs(kit, sources))
     }
 
+    /** 이미지 번역 대상 문단 — 검출 줄을 문단으로 묶고 원문 언어를 단다. 관문이 개입한 화면과 이미지 번역 대상 찾기가 같이 쓴다(코드 정리 B5). */
+    private suspend fun imageParagraphs(bitmap: Bitmap, lines: List<OcrLine>, sourceLanguageCode: String): List<Paragraph> =
+        withContext(Dispatchers.Default) { detectorParagraphs(bitmap, lines, sourceLanguageCode).first }
+            .onEach { it.languageCode = sourceLanguageCode }
+
     /**
-     * 검출기 줄을 줄 상자로 문단에 묶는다([detectedToTransaction] 참고). 문단마다 그 문단을 이루는 원 줄(문단 안 순서)을 함께 준다.
+     * 검출기 줄을 줄 상자로 문단에 묶는다([detectedToResult] 참고). 문단마다 그 문단을 이루는 원 줄(문단 안 순서)을 함께 준다.
      * 상자가 없거나 비트맵 밖인 줄은 어느 문단에도 들지 않는다.
      */
     internal fun detectorParagraphs(
@@ -221,9 +223,7 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
             Line(mutableListOf(placeholder), writingDirection)
         }
 
-        val paragraphs = groupLinesIntoParagraphs(lines, writingDirection, params).flatMap { paragraph ->
-            correctDetectAndSplitParagraphs(detectAndSplitParagraphs(paragraph, writingDirection), writingDirection)
-        }
+        val paragraphs = splitColumns(groupLinesIntoParagraphs(lines, writingDirection, params), writingDirection)
 
         // 문단 → 원 줄. 묶는 단계가 줄 객체를 새로 만들어도 단어 객체는 그대로 옮기므로 단어로 되찾는다.
         val sources = IdentityHashMap<Paragraph, List<OcrLine>>()
@@ -252,7 +252,7 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
      *
      * [background] 는 문맥으로 쓸 이웃 문단 읽기다 — 포인터가 가리킨 문단 읽기가 오면 양보하고 null 을 돌려준다([UnreadParagraphs.getOrRead]).
      */
-    suspend fun readParagraph(transaction: Transaction, paragraph: Paragraph, background: Boolean = false): Paragraph? {
+    suspend fun readParagraph(transaction: VisionResult, paragraph: Paragraph, background: Boolean = false): Paragraph? {
         val unread = transaction.unread ?: return paragraph
         return unread.getOrRead(paragraph, background) { sources ->
             val read = unread.kit.recognize(transaction.bitmap, sources)
@@ -276,13 +276,6 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
         if (isUrdu(languageCode)) UrduLetters.fix(ocr) else ocr
 
     private fun isUrdu(languageCode: String) = languageCode.substringBefore('-') == "ur"
-
-    private fun clampToBitmap(box: Rect, bitmap: Bitmap) = Rect(
-        box.left.coerceAtLeast(0),
-        box.top.coerceAtLeast(0),
-        box.right.coerceAtMost(bitmap.width),
-        box.bottom.coerceAtMost(bitmap.height),
-    )
 
     /**
      * 소스 언어에 맞는 엔진으로 화면을 끝까지 읽는다(검출 + 모든 줄 읽기).
@@ -350,7 +343,7 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
         }
         suspend fun gated(kit: VisionKit): Detected? {
             val verdict = gate?.await() ?: return null
-            val detection = paddleDetection?.await() ?: return null
+            val detection = paddleDetection.await() ?: return null
             paddleSample?.cancel()
             Timber.tag(TAG).i("auto: 지원되지 않는 문자권 관문 개입 (${verdict.script})")
             return Detected(kit, detection, verdict.language, unsupportedScript = verdict)
@@ -457,10 +450,6 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
     }
 
     /**
-     * 주어진 텍스트의 언어를 ML Kit 으로 판정한다. 판정 불가 시 "und".
-     * 자동 감지 번역에서 화면 전체가 아니라 실제 번역 대상 문장으로 감지할 때도 재사용한다.
-     */
-    /**
      * auto 에서 라틴 인식기 결과로 끝내도 되는가([AutoLatinStop], 성능 P4-2). 싼 신호(글자 수·쓰레기 기호·PP-OCRv5 검출 대비 덮은 비율)부터 보고,
      * 서면 줄마다 언어를 감지하고, 마지막으로 PP-OCRv5 표본이 제 문자를 인정한 후보가 없을 때만 멈춘다(키릴을 라틴 인식기가 닮은 글자로 읽는 화면).
      * PP-OCRv5 검출이 없으면(모델 준비 전 등) 멈추지 않는다.
@@ -502,15 +491,22 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
         }
     }
 
-    suspend fun identifyLanguage(text: String): String = suspendCancellableCoroutine { continuation ->
+    /**
+     * 주어진 텍스트의 언어를 ML Kit 으로 판정한다. 판정 불가 시 "und".
+     * 자동 감지 번역에서 화면 전체가 아니라 실제 번역 대상 문장으로 감지할 때도 재사용한다.
+     */
+    suspend fun identifyLanguage(text: String): String {
+        // 감지기는 쓰고 닫는다 — 닫지 않으면 요청마다 네이티브 감지기가 남는다(코드 정리 A4, [identifyLanguages] 와 같다)
         val languageIdentifier = LanguageIdentification.getClient()
-        languageIdentifier.identifyLanguage(text)
-            .addOnSuccessListener { languageCode ->
-                continuation.resume(languageCode)
+        return try {
+            suspendCancellableCoroutine { continuation ->
+                languageIdentifier.identifyLanguage(text)
+                    .addOnSuccessListener { languageCode -> continuation.resume(languageCode) }
+                    .addOnFailureListener { _ -> continuation.resume("und") }
             }
-            .addOnFailureListener { _ ->
-                continuation.resume("und")
-            }
+        } finally {
+            languageIdentifier.close()
+        }
     }
 
     /**
@@ -536,21 +532,7 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
 
         paragraphs.forEach { Timber.tag(TAG).i("groupLinesIntoParagraphs result : ${it.hasParallelLines} ${it.boundingBox} ${it.representation}") }
 
-        /**
-         * [groupLinesIntoParagraphs] 로 클러스터링 하는 경우 세로로 단락 구분이 되어 있는것을 감지하는 것이 어려우므로
-         * 세로단락 구분을 [detectAndSplitParagraphs], [correctDetectAndSplitParagraphs] 으로 확인한다.
-         */
-        paragraphs = paragraphs.flatMap { paragraph ->
-            val splitParagraphs = detectAndSplitParagraphs(paragraph, writingDirection)
-            splitParagraphs.forEach {
-                Timber.tag(TAG).d("detectAndSplitParagraphs ${it.boundingBox} ${it.representation} ")
-            }
-            val clusterParagraphs = correctDetectAndSplitParagraphs(splitParagraphs, writingDirection)
-            clusterParagraphs.forEach {
-                Timber.tag(TAG).d("correctDetectAndSplitParagraphs ${it.boundingBox} ${it.representation} ")
-            }
-            clusterParagraphs
-        }
+        paragraphs = splitColumns(paragraphs, writingDirection)
 
         paragraphs.forEach {
             Timber.tag(TAG).i("paragraphs ${it.boundingBox} ${it.representation} ")
@@ -598,7 +580,7 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
         /** ####################################### verticalParagraphs ###################################### */
         val verticalParams = AssemblyParams.reference(true, sourceLanguageCode)
         var verticalParagraphs: MutableList<Paragraph> =
-            groupLinesIntoParagraphs(mergeColumnPieces(verticalLines, writingDirection, verticalParams), writingDirection, verticalParams)
+            groupLinesIntoParagraphs(verticalLines, writingDirection, verticalParams)
                 .toMutableList()
         verticalParagraphs.forEach { Timber.tag(TAG).i("groupLinesIntoParagraphs result : ${it.boundingBox} ${it.representation}") }
 
@@ -620,18 +602,7 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
         val horizontalWritingDirection = Language.writingDirection(sourceLanguageCode, false)
         val words: List<Word> = ocrLinesToWords(bitmap, horizontalTextLines, horizontalWritingDirection)
         val lines: List<Line> = groupWordsIntoLines(words, horizontalWritingDirection, horizontalParams)
-        var horizontalParagraphs: List<Paragraph> = groupLinesIntoParagraphs(lines, horizontalWritingDirection, horizontalParams)
-        horizontalParagraphs = horizontalParagraphs.flatMap { paragraph ->
-            val splitParagraphs = detectAndSplitParagraphs(paragraph, horizontalWritingDirection)
-            splitParagraphs.forEach {
-                Timber.tag(TAG).d("detectAndSplitParagraphs ${it.boundingBox} ${it.representation} ")
-            }
-            val clusterParagraphs = correctDetectAndSplitParagraphs(splitParagraphs, horizontalWritingDirection)
-            clusterParagraphs.forEach {
-                Timber.tag(TAG).d("correctDetectAndSplitParagraphs ${it.boundingBox} ${it.representation} ")
-            }
-            clusterParagraphs
-        }
+        val horizontalParagraphs = splitColumns(groupLinesIntoParagraphs(lines, horizontalWritingDirection, horizontalParams), horizontalWritingDirection)
 
         verticalParagraphs.forEach { Timber.tag(TAG).i("verticalParagraphs : ${it.boundingBox} ${it.representation}") }
         horizontalParagraphs.forEach { Timber.tag(TAG).i("horizontalParagraphs : ${it.boundingBox} ${it.representation}") }
@@ -642,809 +613,6 @@ class VisionRepository @Inject constructor(@ApplicationContext context: Context?
         verticalParagraphs.forEach { it.languageCode = sourceLanguageCode }
 
         return verticalParagraphs
-    }
-
-    /**
-     * 엔진이 준 줄([OcrLine])을 조립기의 입력인 [Word] 로 바꾼다.
-     *
-     * 줄을 읽는 순서로 정렬해 단어를 펼친 뒤, 상자를 이미지 안으로 자르고, 글자 상자가 있는 단어만 남긴다. 예전에는
-     * ML Kit 의 `Text.Line → Text.Element → Word` 두 함수였는데 늘 이어서 불렸다. 규칙은 그대로다.
-     */
-    internal fun ocrLinesToWords(bitmap: Bitmap, lines: List<OcrLine>, writingDirection: WritingDirection): List<Word> =
-        ocrWordsToWords(bitmap, sortLinesToWords(lines, writingDirection), writingDirection)
-
-    /** 줄을 읽는 순서로 정렬해 단어를 펼친다. 세로쓰기는 세로로 긴 줄만 남긴다. */
-    internal fun sortLinesToWords(textLines: List<OcrLine>, writingDirection: WritingDirection): List<OcrWord> {
-        return when (writingDirection) {
-            WritingDirection.LTR -> {
-                textLines
-                    .filter { it.boundingBox.isValid() }
-                    .sortedWith(
-                        Comparator { line1, line2 ->
-                            val topComparison = line1.boundingBox!!.top.compareTo(line2.boundingBox!!.top)
-                            if (topComparison != 0) topComparison else line1.boundingBox!!.left.compareTo(line2.boundingBox!!.left)
-                        }
-                    )
-                    .flatMap { line -> line.readWords }
-            }
-
-            WritingDirection.RTL -> {
-                textLines
-                    .filter { it.boundingBox.isValid() }
-                    .sortedWith(
-                        Comparator { line1, line2 ->
-                            val topComparison = line1.boundingBox!!.top.compareTo(line2.boundingBox!!.top)
-                            if (topComparison != 0) topComparison else line2.boundingBox!!.right.compareTo(line1.boundingBox!!.right)
-                        }
-                    )
-                    .flatMap { line -> line.readWords }
-            }
-
-            WritingDirection.TTB_LTR -> {
-                textLines
-                    .filter { it.boundingBox.isValid() }
-                    .filter { it.boundingBox!!.width() < it.boundingBox!!.height() }
-                    .sortedWith(
-                        Comparator { line1, line2 ->
-                            val leftComparison = line1.boundingBox!!.left.compareTo(line2.boundingBox!!.left)
-                            if (leftComparison != 0) leftComparison else line1.boundingBox!!.top.compareTo(line2.boundingBox!!.top)
-                        }
-                    )
-                    .flatMap { line -> line.readWords }
-            }
-
-            WritingDirection.TTB_RTL -> {
-                textLines
-                    .filter { it.boundingBox.isValid() }
-                    .filter { it.boundingBox!!.width() < it.boundingBox!!.height() }
-                    .sortedWith(
-                        Comparator { line1, line2 ->
-                            val rightComparison = line2.boundingBox!!.right.compareTo(line1.boundingBox!!.right)
-                            if (rightComparison != 0) rightComparison else line1.boundingBox!!.top.compareTo(line2.boundingBox!!.top)
-                        }
-                    )
-                    .flatMap { line -> line.readWords }
-            }
-        }
-    }
-
-    /** 단어 상자를 이미지 안으로 자르고, 글자 상자가 하나라도 있는 단어만 [Word] 로 만든다. */
-    internal fun ocrWordsToWords(bitmap: Bitmap, elements: List<OcrWord>, writingDirection: WritingDirection): List<Word> {
-        val words = mutableListOf<Word>()
-        val bitmapWidth = bitmap.width
-        val bitmapHeight = bitmap.height
-
-        for (element in elements) {
-            element.boundingBox?.let { boundingBox ->
-                // BoundingBox 보정 작업
-                val left = if (boundingBox.left < 0) 0 else boundingBox.left
-                val top = if (boundingBox.top < 0) 0 else boundingBox.top
-                val right = if (boundingBox.right > bitmapWidth) bitmapWidth else boundingBox.right
-                val bottom = if (boundingBox.bottom > bitmapHeight) bitmapHeight else boundingBox.bottom
-
-                // 새로운 Rect 생성
-                val correctedBoundingBox = Rect(left, top, right, bottom)
-
-                // 보정된 boundingBox를 사용하여 너비와 높이를 확인
-                if (correctedBoundingBox.width() > 0 && correctedBoundingBox.height() > 0) {
-                    val chars = element.symbols
-                        .filter { it.boundingBox.isValid() }
-                        .map { Char(it.boundingBox!!, it.text, writingDirection) }
-
-                    if (chars.isNotEmpty()) {
-                        words.add(Word(correctedBoundingBox, element.text, writingDirection, chars))
-                    }
-                }
-            }
-        }
-        return words
-    }
-
-    /**
-     * [Word] 리스트를
-     * [Line] 리스트로 변환한다.
-     */
-    internal fun groupWordsIntoLines(words: List<Word>, writingDirection: WritingDirection, params: AssemblyParams): List<Line> = with(params) {
-        val lines = mutableListOf<Line>()
-        val columnGaps = if (WORD_COLUMN_GAP_ROWS > 0 &&
-            (writingDirection == WritingDirection.LTR || writingDirection == WritingDirection.RTL)
-        ) ColumnGaps(words) else null
-
-        VisionSingleLineText.sortedForReading(words, writingDirection)
-            .forEach { word ->
-                var addedToLine = false
-
-                for (line in lines) {
-                    // 판단하려고 하는 새로운 Word 와 가장 근접한 line 의 Word
-                    val closestWord = line.words.minByOrNull { it.getWriteDirectionDistance(word) }!!
-
-                    // word-closestWord 폰트 높이 평균
-                    val averageFontHeight: Double = word.getAverageFontHeight(closestWord)
-
-                    // closestWord-word 중심축 거리
-                    val axisDistance = word.getAxisDistance(closestWord)
-
-                    //  중심축 거리가 closestWord-word 폰트 높이 평균 보다 크면 같은 라인이 아님
-                    if (axisDistance > averageFontHeight) break
-
-                    // 읽기방향 word-closestWord 거리
-                    val writeDirectionDistance: Double = word.getWriteDirectionDistance(closestWord).toDouble()
-
-                    // (요소 간 거리 : 요소 평균 높이) 비율
-                    //
-                    // 기준을 행 안 최대 박스 높이로 바꿔도 보았는데 나아지지 않았다 —
-                    // 쪼개진 행 수가 같은 지점에서 묶임·오염이 같은 프론티어에 있었다
-                    // (2026-09-23 실측). 기준을 바꾸는 문제가 아니라 한계비가 좁았던 것이다.
-                    val writeDirectionDistanceFontHeightRatio: Double =
-                        writeDirectionDistance / averageFontHeight
-
-                    /** 판단하려고 하는 새로운 Word 와 기존 Line 에서 새로운 Word 에 가장 근접한 Word 는 읽기방향 일정 거리 이상 떨어져 있지 않아야 한다. */
-                    // [condition 0]
-                    // 1.5 로 새로 허용된 틈(0.63 폰트높이 초과)이 표의 열 틈이면 잇지 않는다(3라운드 E2′).
-                    val columnGap = columnGaps != null && writeDirectionDistanceFontHeightRatio > COLUMN_GAP_MIN_RATIO &&
-                            columnGaps.isColumnGap(closestWord, word, WORD_COLUMN_GAP_ROWS)
-                    if (!columnGap && writeDirectionDistanceFontHeightRatio <= WORD_WRITE_DIRECTION_DISTANCE_FONT_HEIGHT_RATIO_LIMIT) {
-                        // 행방향 중심축 유사율
-                        val axisSimilarityRatio = word.getAxisSimilarityRatio(closestWord)
-
-                        // word-closestWord 폰트 높이 유사율
-                        val fontHeightSimilarityRatio = word.getFontHeightSimilarityRatio(closestWord)
-
-                        // 행방향 중심축 유사율 * word-closestWord 폰트 높이 유사율
-                        val axisFontHeightSimilarityRatio = axisSimilarityRatio * fontHeightSimilarityRatio
-
-                        /** 판단하려고 하는 새로운 Word 와 기존 Line 에서 새로운 Word 에 가장 근접한 Word 는 행방향으로 동일 선상에 위치하고, 폰트 높이가 유사해야 한다. */
-                        // [condition 0-0]
-                        if (axisFontHeightSimilarityRatio >= WORD_AXIS_FONT_HEIGHT_SIMILARITY_MINIMUM_RATIO) { // 0.85
-                            Timber.tag(TAG).d(
-                                "groupWordsIntoLines add 0-0 : "
-                                        + "${writeDirectionDistance._cutDecimal()}, "
-                                        + "${averageFontHeight._cutDecimal()}, "
-                                        + "${writeDirectionDistanceFontHeightRatio._cutDecimal()}, "
-                                        + "${axisSimilarityRatio._cutDecimal()}, "
-                                        + "${fontHeightSimilarityRatio._cutDecimal()}, "
-                                        + "${axisFontHeightSimilarityRatio._cutDecimal()}, "
-                                        + "${line.representation}(${line.boundingBox}) + ${word.representation}(${word.boundingBox})"
-                            )
-                            line.addWord(word)
-                            addedToLine = true
-                            break
-                        }
-                        // [condition 0-1]
-                        else {
-                            Timber.tag(TAG).v(
-                                "groupWordsIntoLines drop 0-1 : "
-                                        + "${writeDirectionDistance._cutDecimal()}, "
-                                        + "${averageFontHeight._cutDecimal()}, "
-                                        + "${writeDirectionDistanceFontHeightRatio._cutDecimal()}, "
-                                        + "${axisSimilarityRatio._cutDecimal()}, "
-                                        + "${fontHeightSimilarityRatio._cutDecimal()}, "
-                                        + "${axisFontHeightSimilarityRatio._cutDecimal()}, "
-                                        + "${line.representation}(${line.boundingBox}) + ${word.representation}(${word.boundingBox})"
-                            )
-                        }
-                    }
-                    // [condition 1]
-                    else {
-                        Timber.tag(TAG).v(
-                            "groupWordsIntoLines drop 1 : "
-                                    + "${writeDirectionDistance._cutDecimal()}, "
-                                    + "${averageFontHeight._cutDecimal()}, "
-                                    + "${writeDirectionDistanceFontHeightRatio._cutDecimal()}, "
-                                    + "${line.representation}(${line.boundingBox}) + ${word.representation}(${word.boundingBox})"
-                        )
-                    }
-                }
-
-                if (!addedToLine) {
-                    lines.add(0, Line(mutableListOf(word), writingDirection))
-                }
-            }
-
-        lines
-    }
-
-    /**
-     * 분석된 Line 들을 Paragraph 로 클러스터링 한다.
-     * 위에서 아래로, 왼쪽에서 오른쪽으로(LTR. RTL 은 반대) List<Line> 을 탐색하면서
-     * 선행 Line 과 후행 Line 을 폰트높이, 라인간 거리, 배경색상, 폰트색상 등의 요소를 근거로 비교하고 클러스터링 한다.
-     */
-    /**
-     * 화면의 대표 줄 간격. 줄 중심 사이 거리의 중앙값이다.
-     *
-     * 예전에는 행간을 그 줄의 박스 높이로 나눠 봤는데, 박스 높이는 그 줄에 어떤 글자가
-     * 왔느냐에 좌우된다 — 키릴은 대부분의 줄에 디센더가 없어 30px 로 조이고 아랍어는
-     * 위아래로 뻗어 44~53px 가 된다. 같은 레이아웃인데도 비율이 1.6 대 0.6 으로 갈려
-     * 러시아어 문단이 통째로 잘렸다(2026-09-23 실측).
-     * 줄 간격은 레이아웃이 정하는 양이라 문자와 무관하다.
-     */
-    internal fun referencePitch(lines: List<Line>, writingDirection: WritingDirection): Double {
-        val isVertical = writingDirection == WritingDirection.TTB_LTR ||
-                writingDirection == WritingDirection.TTB_RTL
-        val centers = lines
-            .map { if (isVertical) it.boundingBox.centerX() else it.boundingBox.centerY() }
-            .sorted()
-        if (centers.size < 2) return 0.0
-        val pitches = centers.zipWithNext { a, b -> (b - a).toDouble() }.filter { it > 0 }.sorted()
-        if (pitches.isEmpty()) return 0.0
-        return pitches[pitches.size / 2]
-    }
-
-    /**
-     * 제목 규칙(3라운드 E3′) — [LINE_HEADING_HEIGHT_RATIO] 참조. [paragraph] 가 한 행뿐이고 [line] 이 셋을 모두
-     * 만족하면 참이다. 제목 후보는 그 행의 줄들을 합친 상자다.
-     */
-    private fun AssemblyParams.isHeadingBreak(
-        paragraph: Paragraph,
-        line: Line,
-        writingDirection: WritingDirection,
-        textLeft: Int,
-        textRight: Int,
-    ): Boolean {
-        if (writingDirection != WritingDirection.LTR && writingDirection != WritingDirection.RTL) return false
-        if (!paragraph.areAllInLine()) return false
-        val title = paragraph.boundingBox
-        val titleHeight = title.height()
-        if (titleHeight <= 0) return false
-        if (line.boundingBox.height() >= LINE_HEADING_HEIGHT_RATIO * titleHeight) return false
-        val shortBy = if (writingDirection == WritingDirection.RTL) title.left - textLeft else textRight - title.right
-        if (shortBy <= 2 * titleHeight) return false
-        if (LINE_HEADING_WIDTH_RATIO > 0 && title.width() >= LINE_HEADING_WIDTH_RATIO * (textRight - textLeft)) return false
-        return true
-    }
-
-    /**
-     * 세로 분기에서 ML Kit 이 한 열을 여러 조각으로 끊어 준 것을 잇는다([VERTICAL_COLUMN_MERGE], 3라운드 E1′).
-     *
-     * 조각은 열 높이의 일부만 차지해 축 인식 채움비로 재면 문단 끝처럼 보이고, 쪼개기 후처리가 "나란한 줄" 로
-     * 오인한다. 가로로 절반 넘게 겹치고 위아래 틈이 열 폭 이하인 이웃 조각을 한 줄로 잇는다. 이은 줄은 조각들의
-     * 단어 객체를 그대로 담는다 — 하네스가 단어로 원 조각을 찾아 채점한다(분모가 설정과 무관해야 한다).
-     */
-    internal fun mergeColumnPieces(lines: List<Line>, writingDirection: WritingDirection, params: AssemblyParams): List<Line> {
-        if (!params.VERTICAL_COLUMN_MERGE) return lines
-        val out = mutableListOf<Line>()
-        for (line in VisionSingleLineText.sortedForReading(lines, writingDirection)) {
-            val last = out.lastOrNull()
-            if (last != null) {
-                val a = last.boundingBox
-                val b = line.boundingBox
-                val overlap = minOf(a.right, b.right) - maxOf(a.left, b.left)
-                val narrower = minOf(a.width(), b.width())
-                val gap = b.top - a.bottom
-                if (narrower > 0 && overlap > narrower * 0.5 && gap <= maxOf(a.width(), b.width())) {
-                    // 조각끼리 위아래로 조금 겹칠 수 있어, 이어 붙이기만 하면 줄 안 단어 순서가 어긋난다. 열 안은 위→아래.
-                    val words = (last.words + line.words).sortedBy { it.boundingBox.top }
-                    out[out.size - 1] = Line(words.toMutableList(), writingDirection)
-                    continue
-                }
-            }
-            out.add(line)
-        }
-        return out
-    }
-
-    /**
-     * 표의 열 틈(3라운드 E2′, [WORD_COLUMN_GAP_ROWS]). 화면의 단어를 행으로 묶고(하네스 `EvalMetrics.bands` 와 같다 —
-     * 세로 겹침이 작은 쪽 높이의 절반 초과), 행마다 그 행 글자 높이(단어 높이 중앙값)의 [COLUMN_GAP_MIN_RATIO] 배
-     * 이상 벌어진 틈의 가로 구간을 모아 둔다. 보통 단어 사이는 그보다 좁아 열 틈이 되지 않는다.
-     */
-    private class ColumnGaps(words: List<Word>) {
-        private val rowOf = java.util.IdentityHashMap<Word, Int>()
-        private val gaps: List<List<IntRange>>
-
-        init {
-            val remaining = words.sortedBy { it.boundingBox.top }.toMutableList()
-            val rows = mutableListOf<List<Word>>()
-            while (remaining.isNotEmpty()) {
-                val head = remaining.removeAt(0)
-                val row = mutableListOf(head)
-                val iterator = remaining.iterator()
-                while (iterator.hasNext()) {
-                    val other = iterator.next()
-                    val span = minOf(head.boundingBox.bottom, other.boundingBox.bottom) -
-                            maxOf(head.boundingBox.top, other.boundingBox.top)
-                    val smaller = minOf(head.boundingBox.height(), other.boundingBox.height())
-                    if (smaller > 0 && span.toDouble() / smaller > 0.5) {
-                        row.add(other); iterator.remove()
-                    }
-                }
-                rows.add(row)
-            }
-            rows.forEachIndexed { index, row -> row.forEach { rowOf[it] = index } }
-            gaps = rows.map { row ->
-                val heights = row.map { it.boundingBox.height() }.sorted()
-                val rowHeight = heights[heights.size / 2]
-                row.sortedBy { it.boundingBox.left }.zipWithNext().mapNotNull { (a, b) ->
-                    val gap = b.boundingBox.left - a.boundingBox.right
-                    if (rowHeight > 0 && gap >= COLUMN_GAP_MIN_RATIO * rowHeight) a.boundingBox.right..b.boundingBox.left
-                    else null
-                }
-            }
-        }
-
-        /** [a]·[b] 사이 틈이 위아래 3행 중 [need] 개 이상의 행에서 같은 가로 구간에 벌어져 있나. */
-        fun isColumnGap(a: Word, b: Word, need: Int): Boolean {
-            val row = rowOf[b] ?: return false
-            val low = minOf(a.boundingBox.right, b.boundingBox.right)
-            val high = maxOf(a.boundingBox.left, b.boundingBox.left)
-            if (high <= low) return false
-            var matched = 0
-            for (other in (row - 3)..(row + 3)) {
-                if (other == row || other < 0 || other >= gaps.size) continue
-                if (gaps[other].any { g ->
-                        val overlap = minOf(high, g.last) - maxOf(low, g.first)
-                        val narrower = minOf(high - low, g.last - g.first)
-                        narrower > 0 && overlap > narrower * 0.5
-                    }) matched++
-            }
-            return matched >= need
-        }
-    }
-
-    /** 두 줄의 중심 사이 거리(줄바꿈 방향). */
-    private fun pitchBetween(a: Line, b: Line, writingDirection: WritingDirection): Double {
-        val isVertical = writingDirection == WritingDirection.TTB_LTR ||
-                writingDirection == WritingDirection.TTB_RTL
-        return if (isVertical) abs(a.boundingBox.centerX() - b.boundingBox.centerX()).toDouble()
-        else abs(a.boundingBox.centerY() - b.boundingBox.centerY()).toDouble()
-    }
-
-    internal fun groupLinesIntoParagraphs(lines: List<Line>, writingDirection: WritingDirection, params: AssemblyParams): List<Paragraph> = with(params) {
-        val paragraphs = mutableListOf<Paragraph>()
-        val referencePitch = referencePitch(lines, writingDirection)
-        val pitchLimit = referencePitch * LINE_PITCH_LIMIT
-        // 화면 글의 가로 범위 — 제목 규칙(3라운드 E3′)이 "짧은 제목" 을 잴 때 쓴다.
-        val textLeft = lines.minOfOrNull { it.boundingBox.left } ?: 0
-        val textRight = lines.maxOfOrNull { it.boundingBox.right } ?: 0
-
-        VisionSingleLineText.sortedForReading(lines, writingDirection)
-            .forEach { line ->
-                /** 판단하려고 하는 새로운 Line이 이미 분석되어 paragraphs 에 존재한다면 continue forEach loop */
-                if (line in paragraphs.flatMap { it.lines }) return@forEach
-
-                var addedToParagraph = false
-
-                for (paragraph in paragraphs) {
-                    // 텍스트 읽기 방향에서 일부 겹치는지의 여부
-                    val isWriteDirectionOverlaps = line.isWriteDirectionOverlaps(paragraph)
-
-                    // 줄바꿈 방향에서 일부 겹치는지의 여부
-                    val isLineReturnDirectionOverlaps = line.isLineReturnDirectionOverlaps(paragraph)
-
-                    /** 판단하려고 하는 새로운 라인과 기존 Paragraph 가 텍스트 읽기 방향과 줄바꿈 방향에서 일부 겹치면 동일 Paragraph 그룹으로 판단한다. */
-                    if (isWriteDirectionOverlaps && isLineReturnDirectionOverlaps) {
-                        Timber.tag(TAG).d(
-                            "groupLinesIntoParagraphs add 0 : "
-                                    + "${paragraph.boundingBox}, "
-                                    + "${paragraph.representation}(${paragraph.height}), "
-                                    + "${line.boundingBox}, "
-                                    + "${line.representation}(${line.height})"
-                        )
-
-                        paragraph.lines.add(line)
-                        addedToParagraph = true
-                        break
-                    }
-
-                    // 판단하려고 하는 새로운 라인과 가장 근접한 paragraph 의 line (paragraph.lines 의 마지막 element)
-                    val closestLine = paragraph.lines.lastOrNull() ?: continue // 없으면 continue
-
-                    // 한 행뿐인 문단이 제목이고 이 줄이 그 아래 부제면 잇지 않는다(3라운드 E3′).
-                    if (LINE_HEADING_HEIGHT_RATIO > 0 && !isLineReturnDirectionOverlaps &&
-                        isHeadingBreak(paragraph, line, writingDirection, textLeft, textRight)
-                    ) continue
-
-                    // line 과 closestLine 의 행간
-                    val lineSpacing = closestLine.getLineReturnDirectionDistance(line)
-
-                    // 줄 간격이 크게 벌어지면 다른 문단으로 본다.
-                    // 검출기가 줄을 주는 엔진은 레이아웃이 정하는 pitch 로, 단어에서 줄을
-                    // 유도하는 ML Kit 경로는 예전처럼 박스 높이로 잰다(위 주석 참조).
-                    if (pitchLimit > 0) {
-                        if (pitchBetween(closestLine, line, writingDirection) > pitchLimit) continue
-                    } else {
-                        if (lineSpacing > closestLine.fontHeight * 1.6) continue
-                    }
-
-                    /**
-                     * 문단의 마지막 줄이 단을 채우지 못했으면 그 문단은 거기서 끝난 것이다.
-                     * 감싸인 글은 마지막 줄만 짧다. 제목과 목록 항목도 짧아 자연히 갈린다.
-                     *
-                     * 줄 간격보다 센 신호다 — 문단 사이가 거의 붙은 배치에서는 간격만으로는
-                     * 구분할 정보가 없지만 이 신호는 남는다(2026-09-23 실측).
-                     * 단 너비는 그 문단 줄들의 최대 너비로 본다. 문단 안에서는 대부분의 줄이
-                     * 단을 채우므로 안정적이다.
-                     */
-                    val alongVertical = LINE_MEASURE_ALONG_WRITING_AXIS &&
-                            (writingDirection == WritingDirection.TTB_RTL || writingDirection == WritingDirection.TTB_LTR)
-                    fun extentOf(l: Line) = if (alongVertical) l.boundingBox.height() else l.boundingBox.width()
-                    val columnWidth = paragraph.lines.maxOf { extentOf(it) }
-                    if (LINE_FILL_MINIMUM_RATIO > 0 && columnWidth > 0 &&
-                        extentOf(closestLine).toDouble() / columnWidth < LINE_FILL_MINIMUM_RATIO
-                    ) continue
-
-                    /**
-                     * 줄 머리가 단 안쪽으로 들어가 있으면 새 문단의 첫 줄이다.
-                     *
-                     * 책 조판은 문단 사이를 빈 줄이 아니라 첫 줄 들여쓰기로 구분한다.
-                     * 그런 쪽에서는 행간이 아무 정보도 주지 않아 문단이 통째로 붙었다
-                     * (실측: 책 15면에서 묶임 90.9% 인데 오염이 전체 단어의 79%).
-                     * 들여쓰기는 그 배치에서 유일하게 남는 신호다.
-                     *
-                     * 기준은 문단 줄들의 머리 중 가장 바깥이다. 문단 안의 이어지는 줄은
-                     * 첫 줄보다 바깥에 있으므로 이 검사에 걸리지 않는다.
-                     */
-                    if (LINE_INDENT_LIMIT > 0) {
-                        val isRtl = writingDirection == WritingDirection.RTL
-                        // 세로쓰기(축 인식을 켰을 때)는 열의 머리가 위 끝이다.
-                        val paragraphHead = when {
-                            alongVertical -> paragraph.lines.minOf { it.boundingBox.top }
-                            isRtl -> paragraph.lines.maxOf { it.boundingBox.right }
-                            else -> paragraph.lines.minOf { it.boundingBox.left }
-                        }
-                        val lineHead = when {
-                            alongVertical -> line.boundingBox.top
-                            isRtl -> line.boundingBox.right
-                            else -> line.boundingBox.left
-                        }
-                        val indent = if (isRtl && !alongVertical) paragraphHead - lineHead else lineHead - paragraphHead
-
-                        /**
-                         * 들여쓰기만으로 끊으면 웹이 깨진다 — 인용문·중첩목록·코드블록처럼
-                         * 문단 시작이 아닌 들여쓰기가 흔하기 때문이다(실측: 웹 83면에서
-                         * 온전한 문단 74.9% → 67.2%). 앞 줄이 단을 못 채웠다는 조건을
-                         * 함께 요구하면 두 신호가 동의할 때만 끊는다. 책 조판에서는 문단
-                         * 마지막 줄이 짧고 다음 줄이 들여쓰기되어 둘이 같이 성립한다.
-                         */
-                        val filled = if (columnWidth > 0)
-                            extentOf(closestLine).toDouble() / columnWidth else 1.0
-                        if (indent > line.fontHeight * LINE_INDENT_LIMIT &&
-                            filled < LINE_INDENT_FILL_GUARD
-                        ) continue
-                    }
-
-                    // line-closestLine 폰트높이 평균
-                    val averageFontHeight: Double = line.getAverageFontHeight(closestLine)
-
-                    /** 판단하려고 하는 새로운 라인과 기존 Paragraph 내 라인들의 평균 폰트높이가 FONT_HEIGHT_SIMILARITY_MINIMUM_RATIO 이상의 유사성을 가지고 있어야 한다. */
-                    // line-closestLine 폰트높이 유사성
-                    val fontHeightSimilarityRatio = line.getFontHeightSimilarityRatio(closestLine)
-
-                    // [condition 0] 폰트높이 유사성 조건에 부합하는 경우
-                    if (fontHeightSimilarityRatio >= LINE_FONT_HEIGHT_SIMILARITY_MINIMUM_RATIO) {
-                        // [condition 0-0] 텍스트 읽기 방향으로 일부 겹치는 경우
-                        if (isWriteDirectionOverlaps) {
-                            /** 판단하려고 하는 새로운 라인과 Paragraph 는 텍스트 읽기 방향으로 LINE_WRITE_DIRECTION_OVERLAP_MINIMUM_RATIO 비율 이상 겹쳐야 한다. */
-                            // 텍스트 읽기 방향으로 width 가 작은 것이 큰 것에 겹치는 비율
-                            val writeDirectionOverlapRatio: Double = line.getWriteDirectionOverlapRatio(paragraph)
-
-                            // [condition 0-0-0] 텍스트 읽기 방향 겹침조건 부합하는 경우
-                            if (writeDirectionOverlapRatio >= LINE_WRITE_DIRECTION_OVERLAP_MINIMUM_RATIO) {
-                                /**
-                                 * closestLine 폰트높이의 유사성과 라인 행간 affinity 로 동일 Paragraph 를 판단한다.
-                                 *
-                                 * 색은 쓰지 않는다. 글자색을 줄에서 재는 일이 실제 화면에서 너무 자주
-                                 * 어긋나, 같은 문단인데 색이 다르다고 갈라놓는 쪽이 압도적으로 많았다.
-                                 * 색이 막아주던 잘못된 병합은 위의 줄 채움비가 대신 막는다.
-                                 * 실제 웹 83면 표본에서 색을 빼고 채움비를 켜니 문단 오염이
-                                 * 261 → 43 줄로 줄고 묶임은 1606 → 1668 줄로 늘었다(2026-09-23 실측).
-                                 */
-                                // 라인 affinity ({행간 : 요소 평균 높이} 비)
-                                // 줄 간격이 화면 대표 간격에 가까울수록 1 에 가깝다.
-                                // 박스 높이로 나누면 문자마다 기준이 달라진다 — 키릴은 박스가
-                                // 조여 같은 레이아웃에서도 affinity 가 0.58 까지 떨어졌다.
-                                val pitch = pitchBetween(closestLine, line, writingDirection)
-                                val lineSpacingAffinity =
-                                    if (pitchLimit > 0 && referencePitch > 0 && pitch > 0)
-                                        min(1.0, referencePitch / pitch)
-                                    else min(1.0, 1.0 / (lineSpacing.toDouble() / averageFontHeight))
-
-                                // 폰트높이 유사성 * {행간 : 요소 평균 높이} 비 affinity
-                                val fontHeightLineSpacingAffinity =
-                                    fontHeightSimilarityRatio * lineSpacingAffinity
-
-                                // [condition 0-0-0-0] 
-                                if (fontHeightLineSpacingAffinity >= LINE_FONT_HEIGHT_SPACING_AFFINITY_LIMIT) {
-                                    Timber.tag(TAG).d(
-                                        "groupLinesIntoParagraphs add 0-0-0-0 : "
-                                                + "${fontHeightSimilarityRatio._cutDecimal()}, "
-                                                + "${lineSpacingAffinity._cutDecimal()}, "
-                                                + "*${fontHeightLineSpacingAffinity._cutDecimal()}, "
-                                                + "${closestLine.representation}(${closestLine.height}) + ${line.representation}(${line.height})"
-                                    )
-                                    paragraph.lines.add(line)
-                                    addedToParagraph = true
-                                    break
-                                }
-                                // [condition 0-0-0-1] 
-                                else {
-                                    Timber.tag(TAG).v(
-                                        "groupLinesIntoParagraphs drop 0-0-0-1 : "
-                                                + "${fontHeightSimilarityRatio._cutDecimal()}, "
-                                                + "${lineSpacingAffinity._cutDecimal()}, "
-                                                + "*${fontHeightLineSpacingAffinity._cutDecimal()}, "
-                                                + "${closestLine.representation}(${closestLine.height}) + ${line.representation}(${line.height})"
-                                    )
-                                }
-                            }
-                            // [condition 0-0-1] 
-                            else {
-                                Timber.tag(TAG).v(
-                                    "groupLinesIntoParagraphs drop 0-0-1 : "
-                                            + "${fontHeightSimilarityRatio._cutDecimal()}, "
-                                            + "${writeDirectionOverlapRatio._cutDecimal()}, "
-                                            + "${closestLine.representation}(${closestLine.height}) + ${line.representation}(${line.height})"
-                                )
-                            }
-                        }
-
-                        // [condition 0-1] 줄바꿈 방향에서 일부 겹치는 경우
-                        else if (isLineReturnDirectionOverlaps) {
-                            /** 판단하려고 하는 새로운 라인과 기존 Paragraph 에서 새로운 라인에 가장 근접한 라인은 줄바꿈 방향으로 동일 선상에 위치해야 한다. */
-                            // 라인 중심축 유사율
-                            val axisSimilarityRatio = line.getAxisSimilarityRatio(closestLine)
-
-                            // 라인 중심축 유사율 * line-closestLine 높이 유사율
-                            val axisHeightSimilarityRatio = axisSimilarityRatio * fontHeightSimilarityRatio
-
-                            // [condition 0-1-0]
-                            if (axisHeightSimilarityRatio >= LINE_AXIS_HEIGHT_SIMILARITY_MINIMUM_RATIO) {
-                                /** 새로운 라인과 기존 Paragraph 에서 새로운 라인에 가장 근접한 라인은 텍스트 읽기 방향 일정 거리 이상 떨어져 있지 않아야 한다. */
-                                // 텍스트 읽기 방향 Line-Line 거리
-                                val writeDirectionDistance: Double = line.getWriteDirectionDistance(closestLine).toDouble()
-
-                                // (요소 간 거리 : 요소 평균 폰트높이) 비율
-                                val writeDirectionDistanceFontHeightRatio: Double = writeDirectionDistance / averageFontHeight
-
-                                // [condition 0-1-0-0]
-                                if (writeDirectionDistanceFontHeightRatio <= LINE_WRITE_DIRECTION_DISTANCE_FONT_HEIGHT_RATIO_LIMIT) {
-                                    Timber.tag(TAG).d(
-                                        "groupLinesIntoParagraphs add 0-1-0-0 : "
-                                                + "${fontHeightSimilarityRatio._cutDecimal()}, "
-                                                + "${axisSimilarityRatio._cutDecimal()}, "
-                                                + "${axisHeightSimilarityRatio._cutDecimal()}, "
-                                                + "${writeDirectionDistance._cutDecimal()}, "
-                                                + "${writeDirectionDistanceFontHeightRatio._cutDecimal()}, "
-                                                + "${closestLine.representation}(${closestLine.height}) + ${line.representation}(${line.height}))"
-                                    )
-
-                                    if (writingDirection == WritingDirection.LTR) {
-                                        if (closestLine.boundingBox.right < line.boundingBox.right) {
-                                            paragraph.lines.add(line)
-                                        } else {
-                                            paragraph.lines.add(paragraph.lines.size - 1, line)
-                                        }
-                                    } else if (writingDirection == WritingDirection.TTB_RTL ||
-                                        writingDirection == WritingDirection.TTB_LTR
-                                    ) {
-                                        // 세로쓰기에서 줄바꿈 방향으로 겹친다는 것은 ML Kit 이 한 열을 여러
-                                        // 조각으로 끊었다는 뜻이다. 열 안의 순서는 위에서 아래다 — 가로쓰기처럼
-                                        // 왼쪽 끝으로 자리를 정하면 조각 순서가 뒤섞인다(실측: ja131).
-                                        if (closestLine.boundingBox.top < line.boundingBox.top) {
-                                            paragraph.lines.add(line)
-                                        } else {
-                                            paragraph.lines.add(paragraph.lines.size - 1, line)
-                                        }
-                                    } else {
-                                        if (line.boundingBox.left < closestLine.boundingBox.left) {
-                                            paragraph.lines.add(line)
-                                        } else {
-                                            paragraph.lines.add(paragraph.lines.size - 1, line)
-                                        }
-                                    }
-                                    // 복수의 Line 들이 하나의 행을 이루게 된다
-                                    paragraph.hasParallelLines = true
-                                    addedToParagraph = true
-                                    break
-                                }
-                                // [condition 0-1-0-1]
-                                else {
-                                    Timber.tag(TAG).v(
-                                        "groupLinesIntoParagraphs drop 0-1-0-1 : "
-                                                + "${fontHeightSimilarityRatio._cutDecimal()}, "
-                                                + "${axisSimilarityRatio._cutDecimal()}, "
-                                                + "${axisHeightSimilarityRatio._cutDecimal()}, "
-                                                + "${writeDirectionDistance._cutDecimal()}, "
-                                                + "${writeDirectionDistanceFontHeightRatio}, "
-                                                + "${LINE_WRITE_DIRECTION_DISTANCE_FONT_HEIGHT_RATIO_LIMIT}, "
-                                                + "${(writeDirectionDistanceFontHeightRatio <= LINE_WRITE_DIRECTION_DISTANCE_FONT_HEIGHT_RATIO_LIMIT)}, "
-                                                + "${closestLine.representation}(${closestLine.height}) + ${line.representation}(${line.height}))"
-                                    )
-                                }
-                            }
-                            // [condition 0-1-1]
-                            else {
-                                Timber.tag(TAG).v(
-                                    "groupLinesIntoParagraphs drop 0-1-1 : "
-                                            + "${fontHeightSimilarityRatio._cutDecimal()}, "
-                                            + "${axisSimilarityRatio._cutDecimal()}, "
-                                            + "${axisHeightSimilarityRatio._cutDecimal()}, "
-                                            + "${closestLine.representation}(${closestLine.height}) + ${line.representation}(${line.height}))"
-                                )
-                            }
-                        }
-                        // [condition 0-2]
-                        else {
-                            Timber.tag(TAG).v(
-                                "groupLinesIntoParagraphs drop 0-2 : "
-                                        + "${fontHeightSimilarityRatio._cutDecimal()}, "
-                                        + "${closestLine.representation}(${closestLine.height}) + ${line.representation}(${line.height}))"
-                            )
-                        }
-                    }
-                    // [condition 1]
-                    else {
-                        Timber.tag(TAG).v(
-                            "groupLinesIntoParagraphs drop 1 : "
-                                    + "${fontHeightSimilarityRatio._cutDecimal()}, "
-                                    + "${closestLine.representation}(${closestLine.height}) + ${line.representation}(${line.height}))"
-                        )
-                    }
-                }
-
-                if (!addedToParagraph) {
-                    paragraphs.add(0, Paragraph(mutableListOf(line), writingDirection))
-                }
-            }
-
-        paragraphs
-    }
-
-    /**
-     * groupLinesIntoParagraphs 에서 분석된 Paragraph 중
-     *
-     *        △ △ △ △ △ △ △ △  ○ ○ ○ ○ ○ ○ ○ ○
-     *        △ △ △ △ △ △ △ △  ○ ○ ○ ○ ○ ○ ○ ○
-     *        △ △ △ △ △ △ △ △  ○ ○ ○ ○ ○ ○ ○ ○
-     *        △ △ △ △ △ △ △ △  ○ ○ ○ ○ ○ ○ ○ ○
-     *
-     * 이런 Paragraph 의 경우 △ 단락과 ○ 단락이 있으나, groupLinesIntoParagraphs 에서 분리해 내지 못한다.
-     *
-     * 복수의 Line 들이 하나의 행을 이루는 것이 있는 Paragraph 를 분석하여
-     * 세로로 단락 구분이 가능한지 확인한다.
-     * DBSCAN 기법을 이용하되, 요소 간 거리는 x축 기준으로 판단하여 Line 의 시작위치가 비슷한 것 끼리 클러스터링 한다.
-     */
-    internal fun detectAndSplitParagraphs(paragraph: Paragraph, writingDirection: WritingDirection): List<Paragraph> {
-        if (!paragraph.hasParallelLines || paragraph.lines.size == 1) {
-            return listOf(paragraph)
-        }
-
-        // lines 가 하나의 라인을 이루는 경우
-        if (paragraph.areAllInLine()) {
-            return listOf(paragraph)
-        }
-
-        Timber.tag(TAG).d("detectAndSplitParagraphs ${paragraph.representation}")
-
-        val lines = paragraph.lines
-        val clustersVisited = mutableSetOf<Line>()
-        val clusters = mutableListOf<MutableList<Line>>()
-        val distanceLimit: Double = paragraph.averageLineHeight()
-
-        // 클러스터 확장 및 탐색
-        // 각 Line을 기준으로 이웃하는 Line을 찾고, 이를 클러스터에 추가하며 재귀적으로 탐색한다
-        fun expandCluster(line: Line, cluster: MutableList<Line>) {
-            val neighbors =
-                lines.filter {
-                    if (it != line) {
-                        Timber.tag(TAG).i(
-                            "Split cluster "
-                                    + "$distanceLimit, ${abs(line.startPosition - it.startPosition)}, ${line.boundingBox}, ${line.representation}, ${it.boundingBox}, ${it.representation}"
-                        )
-                    }
-                    it != line && abs(line.startPosition - it.startPosition) <= distanceLimit
-                }
-
-            cluster.add(line)
-            clustersVisited.add(line)
-            neighbors.forEach {
-                if (!clustersVisited.contains(it)) {
-                    expandCluster(it, cluster)
-                }
-            }
-        }
-
-        // 클러스터 그룹화
-        lines.forEach { line ->
-            if (!clustersVisited.contains(line)) {
-                val cluster = mutableListOf<Line>()
-                expandCluster(line, cluster)
-                clusters.add(cluster)
-            }
-        }
-
-        // 묶음은 탐색 순서로 쌓여 줄 순서가 읽는 순서와 다르다. 가로쓰기는 뒤이은
-        // correctDetectAndSplitParagraphs 가 다시 합치며 정렬하지만 세로 분기에는 그 단계가 없어,
-        // 세로쓰기는 여기서 읽는 순서로 놓는다(실측: ja131 한 문단의 열 조각이 뒤섞였다).
-        val vertical = writingDirection == WritingDirection.TTB_RTL || writingDirection == WritingDirection.TTB_LTR
-        return clusters.map { cluster ->
-            val ordered = if (vertical) VisionSingleLineText.sortedForReading(cluster, writingDirection) else cluster
-            Paragraph(ordered.toMutableList(), writingDirection)
-        }
-    }
-
-    /**
-     * groupLinesIntoParagraphs 에서 분석된 Paragraph 중
-     *
-     *        ○ ○ ○ ○ ○ ○ ○ ○  ○ ○ ○ ○ ○ ○ ○ ○
-     *            ○ ○ ○ ○ ○ ○ ○ ○ ○ ○ ○
-     *                  ○ ○ ○ ○ ○ ○ ○ ○ ○ ○
-     *
-     * 이런 Paragraph 의 경우 detectAndSplitParagraphs 검증을 하게 되면
-     *
-     *        ○ ○ ○ ○ ○ ○ ○ ○  △ △ △ △ △ △ △ △
-     *            ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲
-     *                  ◇ ◇ ◇ ◇ ◇ ◇ ◇ ◇ ◇ ◇
-     *
-     * 와 같이 모두 분리된 Paragraph 로 인식 되므로
-     * 이를 보정하여 하나의 Paragraph 로 클러스터링 한다.
-     */
-    internal fun correctDetectAndSplitParagraphs(paragraphs: List<Paragraph>, writingDirection: WritingDirection): List<Paragraph> {
-        val clustersVisited = mutableSetOf<Paragraph>()
-        val clusters = mutableListOf<MutableList<Paragraph>>()
-
-        fun expandCluster(paragraph: Paragraph, cluster: MutableList<Paragraph>) {
-            val neighbors = paragraphs.filter {
-                if (it != paragraph) {
-                    Timber.tag(TAG)
-                        .i("Correct cluster ${paragraph.isWriteDirectionOverlaps(it)}, ${paragraph.boundingBox}, ${paragraph.representation}, ${it.boundingBox}, ${it.representation}")
-                }
-                it != paragraph && paragraph.isWriteDirectionOverlaps(it)
-            }
-            cluster.add(paragraph)
-            clustersVisited.add(paragraph)
-            neighbors.forEach {
-                if (!clustersVisited.contains(it)) {
-                    expandCluster(it, cluster)
-                }
-            }
-        }
-
-        paragraphs.forEach { paragraph ->
-            if (!clustersVisited.contains(paragraph)) {
-                val cluster = mutableListOf<Paragraph>()
-                expandCluster(paragraph, cluster)
-                clusters.add(cluster)
-            }
-        }
-
-        fun mergeParagraphs(paragraphs: List<Paragraph>): Paragraph {
-            val allLines = VisionSingleLineText.sortedForReading(paragraphs.flatMap { it.lines }, writingDirection)
-                .toMutableList()
-            return Paragraph(allLines, writingDirection)
-        }
-
-        return clusters.map { cluster -> mergeParagraphs(cluster) }
-    }
-
-    /**
-     * OCR 원문이 가로쓰기인지 세로쓰기인지 확인한다.
-     *
-     * 가로로 긴 줄과 그렇지 않은 줄을 **글자 수로** 저울질한다. 예전에는 줄 개수로 다수결을 했는데,
-     * 한두 글자짜리 줄은 상자가 폭보다 높아 세로 표로 잡힌다 — 축구 순위표처럼 "1", "38", "W" 칸이
-     * 많은 가로 화면이 세로쓰기로 판정되어 화면 전체가 세로 분기로 갔다(2026-09-24 실측, BBC 순위표).
-     * 글자 수로 세면 긴 세로 열과 긴 가로 문장이 판정을 정하고 짧은 칸은 거의 무게가 없다.
-     * 표본 343면(세로 86)에서 오판 0, 세로 표의 비율이 세로 표본은 0.84 이상·가로 표본은 0.11 이하로
-     * 벌어진다(줄 개수로는 0.61 과 0.56 이라 경계에 붙어 있었다).
-     */
-    internal fun detectVerticalWriting(text: OcrText): Boolean {
-        var horizontalChars = 0
-        var verticalChars = 0
-
-        for (textBlock in text.blocks) {
-            for (line in textBlock.lines) {
-                line.boundingBox?.let {
-                    val chars = line.text.count { c -> !c.isWhitespace() }
-                    if (it.width() > it.height() && it.height() > 0) {
-                        horizontalChars += chars
-                    } else {
-                        verticalChars += chars
-                    }
-                }
-            }
-        }
-        Timber.tag(TAG).i("isVerticalWriting  $horizontalChars $verticalChars")
-        return horizontalChars < verticalChars
     }
 }
 
@@ -1464,11 +632,14 @@ fun OcrLine.toLine(writingDirection: WritingDirection): Line {
 }
 
 /** 읽힌 줄의 단어. 조립은 읽힌 줄에만 한다 — 검출만 된 줄이 여기 오면 길을 잘못 탄 것이다. */
-private val OcrLine.readWords: List<OcrWord>
+internal val OcrLine.readWords: List<OcrWord>
     get() = checkNotNull(words) { "검출만 되고 읽지 않은 줄이다" }
 
-/** ML Kit 글이 이 언어로 감지되면 auto 가 PP-OCRv5 를 보지 않는다(§13.4 — 제 문자가 있어야 감지되는 비라틴 ML Kit 언어). */
-private val MLKIT_FIRST = setOf("hi", "mr", "ne", "sa", "ko", "ja", "zh")
+/**
+ * ML Kit 글이 이 언어로 감지되면 auto 가 PP-OCRv5 를 보지 않는다(§13.4 — 제 문자가 있어야 감지되는 비라틴 ML Kit 언어). 인식기 고르기와 같은 표다
+ * (데바나가리 표의 예전 저장값 다섯은 언어 감지가 내놓지 않아 판정은 예전 7개 표와 같다, 코드 정리 B4).
+ */
+private val MLKIT_FIRST = VisionKitSelector.MLKIT_SCRIPT_LANGUAGES + VisionKitSelector.DEVANAGARI_LANGUAGES
 
 /**
  * auto 에서 바탕 후보를 고르는 점수. 줄마다 (신뢰도 − 0.5) × 공백 뺀 글자 수의 합 — 확신이 반도 안 되는 줄은 깎는다.

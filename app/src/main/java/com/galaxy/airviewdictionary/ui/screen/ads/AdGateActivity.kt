@@ -69,7 +69,6 @@ import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.RequestConfiguration
 import com.google.android.gms.ads.rewarded.RewardedAd
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
-import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -87,14 +86,14 @@ import java.util.concurrent.atomic.AtomicBoolean
  * 흐름:
  * 1. 안내 다이얼로그 표시 + 광고 로드 시작 (확인 버튼 비활성)
  * 2. 로드 성공/실패가 확정되면 확인 버튼 활성화
- * 3. 확인 클릭 → 로드 성공이면 광고 표시 / 실패면 스킵 취급으로 종료
+ * 3. 확인 클릭 → 로드 성공이면 광고 표시 / 실패면 기술적 실패로 종료(5분 사용권)
  *    (광고를 띄우기 시작하면 다이얼로그 대신 진행 표시만 남는다)
  * 4. 끝까지 봤으면 두 번째 게이트부터 인앱 리뷰를 한 번 청한 뒤 종료
  *
  * 보상 규칙:
  * - 끝까지 시청(onUserEarnedReward): 앱 종료 시까지 광고 없이 사용
  * - 로드 실패 / 표시 실패 / 동의 미확보 (기술적 사유): 5분 사용권 부여 후 종료
- * - 스킵(중간에 닫기·뒤로가기·홈키 중단): 유예 없음 → 다음 번역 시 게이트가 다시 뜬다
+ * - 스킵(중간에 닫기·뒤로가기·홈키 중단): 짧은 쿨다운(Remote Config `skip_cooldown_seconds`, 기본 60초) 뒤 다음 번역 시 게이트가 다시 뜬다
  */
 @AndroidEntryPoint
 class AdGateActivity : ComponentActivity() {
@@ -232,6 +231,9 @@ class AdGateActivity : ComponentActivity() {
     private var rewardedAd: RewardedAd? = null
 
     private var finished = false
+
+    /** 이 게이트의 광고 로드 실패를 이미 기록했다 — 시간 초과 뒤 같은 로드가 늦게 실패해도 한 번만 센다(코드 정리 A6). */
+    private var loadFailureRecorded = false
 
     /**
      * 확인을 눌러 광고를 띄우기 시작했는지. 이때부터 다이얼로그 대신 진행 표시만 보인다 —
@@ -500,7 +502,7 @@ class AdGateActivity : ComponentActivity() {
             if (BuildConfig.DEBUG) {
                 "ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx" // Test ad unit ID
             } else {
-                FirebaseRemoteConfig.getInstance().getString(RemoteConfigRepository.AD_UNIT_ID)
+                remoteConfigRepository.adUnitId()
             }
         Timber.tag(TAG).i("loadRewardedAd adUnitId $adUnitId")
 
@@ -516,7 +518,7 @@ class AdGateActivity : ComponentActivity() {
                     isRewardedAdLoading = false
                     rewardedAd = null
                     recordAdLoadFailure()
-                    // 로드 실패 확정 → 확인 버튼 활성화 (누르면 스킵 취급으로 종료)
+                    // 로드 실패 확정 → 확인 버튼 활성화 (누르면 기술적 실패로 종료 — 5분 사용권)
                     adLoadStateFlow.value = AdLoadState.Failed
                 }
 
@@ -540,6 +542,8 @@ class AdGateActivity : ComponentActivity() {
      * 광고가 제공되지 않는 지역(러시아·이란 등)에서 수익 없이 경험만 깎는 것을 막는다.
      */
     private fun recordAdLoadFailure() {
+        if (loadFailureRecorded) return
+        loadFailureRecorded = true
         val policy = remoteConfigRepository.getAdGatePolicy()
         if (!policy.isBackoffEnabled) return
 

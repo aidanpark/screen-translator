@@ -55,10 +55,11 @@ class VisionKitSelector(context: Context? = null) {
             return base !in NON_LATIN_SCRIPT || base in MLKIT_SCRIPT_LANGUAGES || base in DEVANAGARI_LANGUAGES || base in PaddleKits.LANGUAGES
         }
 
-        private val MLKIT_SCRIPT_LANGUAGES = setOf("zh", "ko", "ja")
+        /** ML Kit 전용 인식기(중국어 · 한국어 · 일본어)가 맡는 언어. 라틴 멈추기(`AutoLatinStop`)와 auto 의 "ML Kit 먼저" 판정도 이 표를 쓴다. */
+        internal val MLKIT_SCRIPT_LANGUAGES = setOf("zh", "ko", "ja")
 
-        /** ML Kit 데바나가리 인식기가 읽는 언어. [candidatesFor] 도 이 표로 그 인식기를 고른다. */
-        private val DEVANAGARI_LANGUAGES = setOf(
+        /** ML Kit 데바나가리 인식기가 읽는 언어. [candidatesFor] 도, auto 의 라틴 멈추기(`AutoLatinStop`)도 이 표를 쓴다. */
+        internal val DEVANAGARI_LANGUAGES = setOf(
             "mr", // मराठी 마라티어 (Marathi)
             "sa", // संस्कृत 산스크리트어 (Sanskrit)
             "hi", // हिंदी 힌디어 (Hindi)

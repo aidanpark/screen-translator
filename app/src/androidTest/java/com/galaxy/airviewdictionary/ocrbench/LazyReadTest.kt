@@ -1,5 +1,6 @@
 package com.galaxy.airviewdictionary.ocrbench
 
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -129,7 +130,7 @@ class LazyReadTest {
         assertEquals(read, tx.readParagraphs())
 
         // 잃은 단어가 없다 — 다 읽힌 화면의 단어 변환과 단어 집합이 같다.
-        val all = repository.ocrLinesToWords(bitmap, repository.read(bitmap, "en").lines, com.galaxy.airviewdictionary.data.local.vision.WritingDirection.LTR)
+        val all = ParagraphAssembler.ocrLinesToWords(bitmap, repository.read(bitmap, "en").lines, com.galaxy.airviewdictionary.data.local.vision.WritingDirection.LTR)
             .map { "${it.boundingBox.toShortString()} ${it.representation}" }.sorted()
         assertEquals(all, read.flatMap { wordsOf(it) }.sorted())
 

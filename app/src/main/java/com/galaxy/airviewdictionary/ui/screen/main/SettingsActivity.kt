@@ -5,6 +5,11 @@ import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.annotation.DrawableRes
+import androidx.annotation.StringRes
+import androidx.datastore.preferences.core.Preferences
+import kotlinx.coroutines.flow.Flow
+import com.galaxy.airviewdictionary.data.remote.translation.KeyValidationResult
 import android.content.Intent
 import androidx.core.net.toUri
 import android.content.res.Configuration
@@ -17,13 +22,9 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -72,10 +73,8 @@ import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VoiceChat
 import androidx.compose.material.icons.outlined.Api
-import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -98,7 +97,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -142,7 +140,6 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.galaxy.airviewdictionary.BuildConfig
 import com.galaxy.airviewdictionary.R
 import com.galaxy.airviewdictionary.data.local.capture.CaptureRepository
 import com.galaxy.airviewdictionary.data.local.screen.ScreenInfoHolder
@@ -165,7 +162,6 @@ import com.galaxy.airviewdictionary.ui.common.fontDimensionResource
 import com.galaxy.airviewdictionary.ui.common.safeScaffoldContentWindowInsets
 import com.galaxy.airviewdictionary.ui.screen.AVDActivity
 import com.galaxy.airviewdictionary.ui.screen.intro.SplashActivity
-import com.galaxy.airviewdictionary.ui.screen.overlay.dialog.DialogView
 import com.galaxy.airviewdictionary.ui.screen.overlay.languagelist.LanguageListView
 import com.galaxy.airviewdictionary.ui.screen.overlay.menubar.MenuBar
 import com.galaxy.airviewdictionary.ui.screen.overlay.menubar.MenuBarView
@@ -455,7 +451,7 @@ class SettingsActivity : AVDActivity() {
         val dockingDelaySubtextOffset = remember { mutableStateOf(Point(0, 0)) }
         val dockingDelay by viewModel.preferenceRepository.dockingDelayFlow.collectAsStateWithLifecycle(
             lifecycle = lifecycleOwner.lifecycle,
-            initialValue = 3000L
+            initialValue = PreferenceRepository.DEFAULT_DOCKING_DELAY
         )
 
         // Haptic feedback to detection
@@ -475,7 +471,7 @@ class SettingsActivity : AVDActivity() {
         val menuBarTransparencySubtextOffset = remember { mutableStateOf(Point(0, 0)) }
         val menuBarTransparency by viewModel.preferenceRepository.menuBarTransparencyFlow.collectAsStateWithLifecycle(
             lifecycle = lifecycleOwner.lifecycle,
-            initialValue = 1.0f
+            initialValue = PreferenceRepository.DEFAULT_TRANSPARENCY
         )
 
         // Menubar Composition
@@ -492,7 +488,7 @@ class SettingsActivity : AVDActivity() {
         val translationPoint = remember { mutableStateOf(Point(0, 0)) }
         val translationTransparency by viewModel.preferenceRepository.translationTransparencyFlow.collectAsStateWithLifecycle(
             lifecycle = lifecycleOwner.lifecycle,
-            initialValue = 1.0f
+            initialValue = PreferenceRepository.DEFAULT_TRANSPARENCY
         )
 
         // Translation close delay
@@ -508,7 +504,7 @@ class SettingsActivity : AVDActivity() {
         val replyTransparencySubtextOffset = remember { mutableStateOf(Point(0, 0)) }
         val replyTransparency by viewModel.preferenceRepository.replyTransparencyFlow.collectAsStateWithLifecycle(
             lifecycle = lifecycleOwner.lifecycle,
-            initialValue = 1.0f
+            initialValue = PreferenceRepository.DEFAULT_TRANSPARENCY
         )
 
         // Automatic translation playback
@@ -1127,13 +1123,15 @@ class SettingsActivity : AVDActivity() {
                             )
 
                             var showDeepLApiKeyDialog by remember { mutableStateOf(false) }
-                            var deepLKeyActivated by remember { mutableStateOf(DeepLKit.getStoredApiKey(context) != null) }
                             var showOpenAiApiKeyDialog by remember { mutableStateOf(false) }
-                            var openAiKeyActivated by remember { mutableStateOf(OpenAiKit.getStoredApiKey(context) != null) }
                             var showGeminiApiKeyDialog by remember { mutableStateOf(false) }
-                            var geminiKeyActivated by remember { mutableStateOf(GeminiKit.getStoredApiKey(context) != null) }
                             var showClaudeApiKeyDialog by remember { mutableStateOf(false) }
-                            var claudeKeyActivated by remember { mutableStateOf(ClaudeKit.getStoredApiKey(context) != null) }
+                            // 키 등록 표시는 킷의 상태를 따른다 — 킷이 만들어질 때 한 번 읽고(설정 뷰모델이 번역 저장소로 킷을 만든다), 키를 저장하면
+                            // 갱신한다(코드 정리 B1 — 화면이 따로 들고 대화상자를 닫을 때마다 주 스레드에서 다시 읽었다)
+                            val deepLKeyActivated by DeepLKit.keyActivatedStateFlow.collectAsStateWithLifecycle()
+                            val openAiKeyActivated by OpenAiKit.keyActivatedStateFlow.collectAsStateWithLifecycle()
+                            val geminiKeyActivated by GeminiKit.keyActivatedStateFlow.collectAsStateWithLifecycle()
+                            val claudeKeyActivated by ClaudeKit.keyActivatedStateFlow.collectAsStateWithLifecycle()
 
                             MenuTextItem(
                                 menuItemPosition = MenuItemPosition.Top,
@@ -1179,34 +1177,33 @@ class SettingsActivity : AVDActivity() {
                                 DeepLApiKeyDialog(
                                     onDismissRequest = {
                                         showDeepLApiKeyDialog = false
-                                        deepLKeyActivated = DeepLKit.getStoredApiKey(context) != null
                                     }
                                 )
                             }
 
                             if (showOpenAiApiKeyDialog) {
-                                OpenAiApiKeyDialog(
+                                AiApiKeyDialog(
+                                    spec = aiKeyDialogSpec(TranslationKitType.OPENAI),
                                     onDismissRequest = {
                                         showOpenAiApiKeyDialog = false
-                                        openAiKeyActivated = OpenAiKit.getStoredApiKey(context) != null
                                     }
                                 )
                             }
 
                             if (showGeminiApiKeyDialog) {
-                                GeminiApiKeyDialog(
+                                AiApiKeyDialog(
+                                    spec = aiKeyDialogSpec(TranslationKitType.GEMINI),
                                     onDismissRequest = {
                                         showGeminiApiKeyDialog = false
-                                        geminiKeyActivated = GeminiKit.getStoredApiKey(context) != null
                                     }
                                 )
                             }
 
                             if (showClaudeApiKeyDialog) {
-                                ClaudeApiKeyDialog(
+                                AiApiKeyDialog(
+                                    spec = aiKeyDialogSpec(TranslationKitType.CLAUDE),
                                     onDismissRequest = {
                                         showClaudeApiKeyDialog = false
-                                        claudeKeyActivated = ClaudeKit.getStoredApiKey(context) != null
                                     }
                                 )
                             }
@@ -2067,11 +2064,7 @@ class SettingsActivity : AVDActivity() {
             val trimmedKey = apiKeyInput.trim()
             if (trimmedKey.isEmpty()) {
                 DeepLKit.storeApiKey(context, "")
-                coroutineScope.launch {
-                    if (viewModel.preferenceRepository.translationKitTypeFlow.first() == TranslationKitType.DEEPL) {
-                        viewModel.preferenceRepository.update(PreferenceRepository.TRANSLATION_KIT_TYPE, TranslationKitType.GOOGLE.name)
-                    }
-                }
+                viewModel.afterKeyRemoved(TranslationKitType.DEEPL)
                 onDismissRequest()
                 return
             }
@@ -2080,38 +2073,23 @@ class SettingsActivity : AVDActivity() {
             showInvalidKeyError = false
             coroutineScope.launch {
                 when (DeepLKit.validateApiKey(trimmedKey)) {
-                    DeepLKit.KeyValidationResult.VALID -> {
+                    KeyValidationResult.VALID -> {
                         DeepLKit.storeApiKey(context, trimmedKey)
                         onDismissRequest()
                     }
 
-                    DeepLKit.KeyValidationResult.INVALID -> {
+                    KeyValidationResult.INVALID -> {
                         isValidating = false
                         showInvalidKeyError = true
                     }
 
-                    DeepLKit.KeyValidationResult.NETWORK_ERROR -> {
+                    KeyValidationResult.NETWORK_ERROR -> {
                         DeepLKit.storeApiKey(context, trimmedKey)
                         Toast.makeText(context, getString(R.string.deepl_key_network_error), Toast.LENGTH_LONG).show()
                         onDismissRequest()
                     }
                 }
             }
-        }
-
-        @Composable
-        fun LinkText(text: String, url: String) {
-            Text(
-                text = text,
-                color = linkColor,
-                textDecoration = TextDecoration.Underline,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                modifier = Modifier
-                    .clickable {
-                        context.startActivitySafely(Intent(Intent.ACTION_VIEW, url.toUri()))
-                    }
-                    .padding(vertical = 6.dp),
-            )
         }
 
         Dialog(onDismissRequest = onDismissRequest) {
@@ -2158,10 +2136,12 @@ class SettingsActivity : AVDActivity() {
                 Spacer(modifier = Modifier.height(10.dp))
 
                 LinkText(
+                    color = linkColor,
                     text = getString(R.string.deepl_key_link_subscription),
                     url = DeepLKit.URL_SUBSCRIPTION,
                 )
                 LinkText(
+                    color = linkColor,
                     text = getString(R.string.deepl_key_link_keys),
                     url = DeepLKit.URL_API_KEYS,
                 )
@@ -2221,12 +2201,94 @@ class SettingsActivity : AVDActivity() {
         }
     }
 
-    /**
-     * OpenAI API 키 입력 + 번역 모델 선택 팝업. DeepL 다이얼로그와 같은 카드 스타일.
-     * 모델 후보는 Remote Config([RemoteConfigRepository.TRANSLATE_MODELS])에서 온다.
-     */
+    /** API 키 대화상자의 바깥 링크(키 발급 · 결제 페이지). DeepL 과 AI 엔진 대화상자가 같이 쓴다. */
     @Composable
-    fun OpenAiApiKeyDialog(
+    fun LinkText(text: String, url: String, color: Color) {
+        val context = LocalContext.current
+        Text(
+            text = text,
+            color = color,
+            textDecoration = TextDecoration.Underline,
+            style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
+            modifier = Modifier
+                .clickable {
+                    context.startActivitySafely(Intent(Intent.ACTION_VIEW, url.toUri()))
+                }
+                .padding(vertical = 6.dp),
+        )
+    }
+
+    /**
+     * AI 엔진 키 대화상자의 엔진별 차이(코드 정리 B1 — 거의 같은 대화상자 셋을 하나로 모았다). 나머지(키 입력 · 검증 · 모델 · 문맥/스타일 옵션 ·
+     * 버튼)는 [AiApiKeyDialog] 가 같게 그린다. 모델 후보는 Remote Config([RemoteConfigRepository.TRANSLATE_MODELS])에서 온다.
+     */
+    class AiKeyDialogSpec(
+        val kitType: TranslationKitType,
+        @DrawableRes val logo: Int,
+        @StringRes val keyGuide: Int,
+        @StringRes val signupGuide: Int,
+        val urlApiKeys: String,
+        val urlBilling: String,
+        val storedKey: (Context) -> String?,
+        val storeKey: (Context, String) -> Unit,
+        val validate: suspend (String) -> KeyValidationResult,
+        val models: () -> List<String>,
+        val modelFlow: Flow<String?>,
+        val contextModeFlow: Flow<TranslationContextMode>,
+        val strengthFlow: Flow<TranslationStrength>,
+        val domainFlow: Flow<TranslationDomain>,
+        val modelKey: Preferences.Key<String>,
+        val contextModeKey: Preferences.Key<String>,
+        val strengthKey: Preferences.Key<String>,
+        val domainKey: Preferences.Key<String>,
+        /** 키를 지운 뒤 엔진별 정리. */
+        val onKeyRemoved: suspend () -> Unit = {},
+    )
+
+    fun aiKeyDialogSpec(kitType: TranslationKitType): AiKeyDialogSpec {
+        val preferences = viewModel.preferenceRepository
+        val remoteConfig = viewModel.remoteConfigRepository
+        return when (kitType) {
+            TranslationKitType.OPENAI -> AiKeyDialogSpec(
+                kitType, R.drawable.ci_openai, R.string.openai_key_guide, R.string.openai_key_signup_guide,
+                OpenAiKit.URL_API_KEYS, OpenAiKit.URL_BILLING,
+                OpenAiKit::getStoredApiKey, OpenAiKit::storeApiKey, { OpenAiKit.validateApiKey(it) },
+                remoteConfig::getOpenAiTranslateModels,
+                preferences.openAiModelFlow, preferences.openAiContextModeFlow, preferences.openAiTranslationStrengthFlow, preferences.openAiTranslationDomainFlow,
+                PreferenceRepository.OPENAI_MODEL, PreferenceRepository.OPENAI_CONTEXT_MODE,
+                PreferenceRepository.OPENAI_TRANSLATION_STRENGTH, PreferenceRepository.OPENAI_TRANSLATION_DOMAIN,
+            )
+            TranslationKitType.GEMINI -> AiKeyDialogSpec(
+                kitType, R.drawable.ci_gemini, R.string.gemini_key_guide, R.string.gemini_key_signup_guide,
+                GeminiKit.URL_API_KEYS, GeminiKit.URL_BILLING,
+                GeminiKit::getStoredApiKey, GeminiKit::storeApiKey, { GeminiKit.validateApiKey(it) },
+                remoteConfig::getGeminiTranslateModels,
+                preferences.geminiModelFlow, preferences.geminiContextModeFlow, preferences.geminiTranslationStrengthFlow, preferences.geminiTranslationDomainFlow,
+                PreferenceRepository.GEMINI_MODEL, PreferenceRepository.GEMINI_CONTEXT_MODE,
+                PreferenceRepository.GEMINI_TRANSLATION_STRENGTH, PreferenceRepository.GEMINI_TRANSLATION_DOMAIN,
+            )
+            TranslationKitType.CLAUDE -> AiKeyDialogSpec(
+                kitType, R.drawable.ci_claude, R.string.claude_key_guide, R.string.claude_key_signup_guide,
+                ClaudeKit.URL_API_KEYS, ClaudeKit.URL_BILLING,
+                ClaudeKit::getStoredApiKey, ClaudeKit::storeApiKey, { ClaudeKit.validateApiKey(it) },
+                remoteConfig::getClaudeTranslateModels,
+                preferences.claudeModelFlow, preferences.claudeContextModeFlow, preferences.claudeTranslationStrengthFlow, preferences.claudeTranslationDomainFlow,
+                PreferenceRepository.CLAUDE_MODEL, PreferenceRepository.CLAUDE_CONTEXT_MODE,
+                PreferenceRepository.CLAUDE_TRANSLATION_STRENGTH, PreferenceRepository.CLAUDE_TRANSLATION_DOMAIN,
+                // Claude 이미지 번역으로만 원문이 되는 언어였으면 auto 로 바꾼다(§25, 사용자 결정)
+                onKeyRemoved = {
+                    if (ImageTranslation.isImageOnlyLanguage(preferences.storedSourceLanguageCode())) {
+                        preferences.update(PreferenceRepository.SOURCE_LANGUAGE_CODE, "auto")
+                    }
+                },
+            )
+            else -> error("AI 키 대화상자가 없는 엔진: $kitType")
+        }
+    }
+
+    @Composable
+    fun AiApiKeyDialog(
+        spec: AiKeyDialogSpec,
         onDismissRequest: () -> Unit,
     ) {
         val context = LocalContext.current
@@ -2236,25 +2298,24 @@ class SettingsActivity : AVDActivity() {
         val contentColor = if (isDarkMode) Color(0xFFFDFDFD) else Color(0xFF232323)
         val linkColor = if (isDarkMode) Color(0xFF6A91B2) else Color(0xFF446987)
 
-        var apiKeyInput by remember { mutableStateOf(OpenAiKit.getStoredApiKey(context) ?: "") }
+        var apiKeyInput by remember { mutableStateOf(spec.storedKey(context) ?: "") }
         var isValidating by remember { mutableStateOf(false) }
         var showInvalidKeyError by remember { mutableStateOf(false) }
         val coroutineScope = rememberCoroutineScope()
         val scrollState = rememberScrollState()
 
         // 번역 모델 후보(Remote Config)와 현재 선택값
-        val models = remember { viewModel.remoteConfigRepository.getOpenAiTranslateModels() }
+        val models = remember { spec.models() }
         var selectedModel by remember { mutableStateOf<String?>(null) }
         LaunchedEffect(Unit) {
-            // 저장된 모델이 현재 후보 목록에 없으면(원격에서 목록 변경) 첫 번째를 기본 선택으로 둔다.
-            val saved = viewModel.preferenceRepository.openAiModelFlow.first()
+            val saved = spec.modelFlow.first()
             selectedModel = saved?.takeIf { it in models } ?: models.firstOrNull()
         }
 
         fun persistModel() {
             selectedModel?.let { model ->
                 coroutineScope.launch {
-                    viewModel.preferenceRepository.update(PreferenceRepository.OPENAI_MODEL, model)
+                    viewModel.preferenceRepository.update(spec.modelKey, model)
                 }
             }
         }
@@ -2264,37 +2325,32 @@ class SettingsActivity : AVDActivity() {
         var strength by remember { mutableStateOf(TranslationStrength.DEFAULT) }
         var domain by remember { mutableStateOf(TranslationDomain.DEFAULT) }
         LaunchedEffect(Unit) {
-            contextMode = viewModel.preferenceRepository.openAiContextModeFlow.first()
-            strength = viewModel.preferenceRepository.openAiTranslationStrengthFlow.first()
-            domain = viewModel.preferenceRepository.openAiTranslationDomainFlow.first()
+            contextMode = spec.contextModeFlow.first()
+            strength = spec.strengthFlow.first()
+            domain = spec.domainFlow.first()
         }
 
         fun persistOptions() {
             coroutineScope.launch {
-                viewModel.preferenceRepository.update(PreferenceRepository.OPENAI_CONTEXT_MODE, contextMode.name)
-                viewModel.preferenceRepository.update(PreferenceRepository.OPENAI_TRANSLATION_STRENGTH, strength.name)
-                viewModel.preferenceRepository.update(PreferenceRepository.OPENAI_TRANSLATION_DOMAIN, domain.name)
+                viewModel.preferenceRepository.update(spec.contextModeKey, contextMode.name)
+                viewModel.preferenceRepository.update(spec.strengthKey, strength.name)
+                viewModel.preferenceRepository.update(spec.domainKey, domain.name)
             }
         }
 
         /**
          * 저장 처리.
-         * - 빈 값: 검증 없이 키 삭제(비활성화). 선택된 엔진이 OpenAI 면 Google 로 되돌린다.
-         * - 값 있음: 모델 조회로 검증. 무효 키는 저장하지 않고 오류 표시,
-         *   네트워크 오류는 키 문제로 볼 수 없으므로 저장하고 안내만 한다.
-         * 모델 선택은 키 유효성과 무관하게 항상 저장한다.
+         * - 빈 값: 검증 없이 키 삭제(비활성화). 선택된 엔진이 이 엔진이면 Google 로 되돌리고, 엔진별 정리([AiKeyDialogSpec.onKeyRemoved])를 한다.
+         * - 값 있음: 엔진 API 로 검증. 무효 키는 저장하지 않고 오류 표시, 네트워크 오류는 키 문제로 볼 수 없으므로 저장하고 안내만 한다.
+         * 모델 · 옵션 선택은 키 유효성과 무관하게 항상 저장한다.
          */
         fun saveApiKey() {
             persistModel()
             persistOptions()
             val trimmedKey = apiKeyInput.trim()
             if (trimmedKey.isEmpty()) {
-                OpenAiKit.storeApiKey(context, "")
-                coroutineScope.launch {
-                    if (viewModel.preferenceRepository.translationKitTypeFlow.first() == TranslationKitType.OPENAI) {
-                        viewModel.preferenceRepository.update(PreferenceRepository.TRANSLATION_KIT_TYPE, TranslationKitType.GOOGLE.name)
-                    }
-                }
+                spec.storeKey(context, "")
+                viewModel.afterKeyRemoved(spec.kitType, spec.onKeyRemoved)
                 onDismissRequest()
                 return
             }
@@ -2302,41 +2358,26 @@ class SettingsActivity : AVDActivity() {
             isValidating = true
             showInvalidKeyError = false
             coroutineScope.launch {
-                when (OpenAiKit.validateApiKey(trimmedKey)) {
-                    OpenAiKit.KeyValidationResult.VALID -> {
-                        OpenAiKit.storeApiKey(context, trimmedKey)
+                when (spec.validate(trimmedKey)) {
+                    KeyValidationResult.VALID -> {
+                        spec.storeKey(context, trimmedKey)
                         // 키 유효 ≠ 크레딧 보유 — 기대치를 미리 맞춰 "앱 고장" 오해를 줄인다
                         Toast.makeText(context, context.getString(R.string.key_saved_credit_hint), Toast.LENGTH_LONG).show()
                         onDismissRequest()
                     }
 
-                    OpenAiKit.KeyValidationResult.INVALID -> {
+                    KeyValidationResult.INVALID -> {
                         isValidating = false
                         showInvalidKeyError = true
                     }
 
-                    OpenAiKit.KeyValidationResult.NETWORK_ERROR -> {
-                        OpenAiKit.storeApiKey(context, trimmedKey)
+                    KeyValidationResult.NETWORK_ERROR -> {
+                        spec.storeKey(context, trimmedKey)
                         Toast.makeText(context, getString(R.string.deepl_key_network_error), Toast.LENGTH_LONG).show()
                         onDismissRequest()
                     }
                 }
             }
-        }
-
-        @Composable
-        fun LinkText(text: String, url: String) {
-            Text(
-                text = text,
-                color = linkColor,
-                textDecoration = TextDecoration.Underline,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                modifier = Modifier
-                    .clickable {
-                        context.startActivitySafely(Intent(Intent.ACTION_VIEW, url.toUri()))
-                    }
-                    .padding(vertical = 6.dp),
-            )
         }
 
         Dialog(onDismissRequest = onDismissRequest) {
@@ -2352,13 +2393,13 @@ class SettingsActivity : AVDActivity() {
                 // 로고 + 타이틀
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Image(
-                        painter = painterResource(id = R.drawable.ci_openai),
-                        contentDescription = "OpenAI logo",
+                        painter = painterResource(id = spec.logo),
+                        contentDescription = "${spec.kitType.text} logo",
                         modifier = Modifier.size(26.dp),
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = TranslationKitType.OPENAI.text,
+                        text = spec.kitType.text,
                         color = titleColor,
                         style = MaterialTheme.typography.titleLarge.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold),
                     )
@@ -2376,7 +2417,7 @@ class SettingsActivity : AVDActivity() {
                 Spacer(modifier = Modifier.height(18.dp))
 
                 Text(
-                    text = getString(R.string.openai_key_guide),
+                    text = getString(spec.keyGuide),
                     color = contentColor,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                 )
@@ -2384,579 +2425,22 @@ class SettingsActivity : AVDActivity() {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = getString(R.string.openai_key_signup_guide),
+                    text = getString(spec.signupGuide),
                     color = contentColor,
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
                 )
+
                 Spacer(modifier = Modifier.height(10.dp))
 
                 LinkText(
+                    color = linkColor,
                     text = getString(R.string.openai_key_link_keys),
-                    url = OpenAiKit.URL_API_KEYS,
+                    url = spec.urlApiKeys,
                 )
                 LinkText(
+                    color = linkColor,
                     text = getString(R.string.openai_key_link_billing),
-                    url = OpenAiKit.URL_BILLING,
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                ApiKeyField(
-                    value = apiKeyInput,
-                    onValueChange = {
-                        apiKeyInput = it
-                        showInvalidKeyError = false
-                    },
-                    enabled = !isValidating,
-                    isError = showInvalidKeyError,
-                    contentColor = contentColor,
-                    linkColor = linkColor,
-                )
-
-                if (showInvalidKeyError) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = getString(R.string.deepl_key_invalid),
-                        color = Color(0xFFB3261E),
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                    )
-                }
-
-                // 번역 모델 선택
-                if (models.isNotEmpty()) {
-                    ModelDropdownField(
-                        label = getString(R.string.openai_model_label),
-                        models = models,
-                        selectedModel = selectedModel,
-                        enabled = !isValidating,
-                        titleColor = titleColor,
-                        contentColor = contentColor,
-                        linkColor = linkColor,
-                        onModelSelected = { selectedModel = it },
-                    )
-                }
-
-                    RadioOptionGroup(
-                        label = getString(R.string.translation_context_label),
-                        description = getString(R.string.translation_context_guide),
-                        options = TranslationContextMode.entries,
-                        selected = contextMode,
-                        enabled = !isValidating,
-                        labelOf = { getString(it.labelResourceId) },
-                        titleColor = titleColor,
-                        contentColor = contentColor,
-                        linkColor = linkColor,
-                        onSelected = { contextMode = it },
-                    )
-
-                    RadioOptionGroup(
-                        label = getString(R.string.translation_strength_label),
-                        options = TranslationStrength.entries,
-                        selected = strength,
-                        enabled = !isValidating,
-                        labelOf = { getString(it.labelResourceId) },
-                        titleColor = titleColor,
-                        contentColor = contentColor,
-                        linkColor = linkColor,
-                        onSelected = { strength = it },
-                    )
-
-                    RadioOptionGroup(
-                        label = getString(R.string.translation_domain_label),
-                        options = TranslationDomain.entries,
-                        selected = domain,
-                        enabled = !isValidating,
-                        labelOf = { getString(it.labelResourceId) },
-                        titleColor = titleColor,
-                        contentColor = contentColor,
-                        linkColor = linkColor,
-                        onSelected = { domain = it },
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(
-                        onClick = onDismissRequest,
-                        enabled = !isValidating,
-                    ) {
-                        Text(
-                            text = stringResource(id = android.R.string.cancel),
-                            color = contentColor,
-                            fontSize = 15.sp,
-                        )
-                    }
-                    TextButton(
-                        onClick = { saveApiKey() },
-                        enabled = !isValidating,
-                    ) {
-                        Text(
-                            text = if (isValidating) getString(R.string.deepl_key_validating) else getString(R.string.label_save),
-                            color = linkColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Gemini API 키 입력 + 번역 모델 선택 팝업. OpenAI 다이얼로그와 같은 카드 스타일.
-     * 모델 후보는 Remote Config([RemoteConfigRepository.TRANSLATE_MODELS])에서 온다.
-     */
-    @Composable
-    fun GeminiApiKeyDialog(
-        onDismissRequest: () -> Unit,
-    ) {
-        val context = LocalContext.current
-        val isDarkMode = isSystemInDarkTheme()
-        val backgroundColor = if (isDarkMode) Color(0xFF1F1F1F) else Color(0xFFFEFEFE)
-        val titleColor = if (isDarkMode) Color(0xFFFFFFFF) else Color(0xFF000000)
-        val contentColor = if (isDarkMode) Color(0xFFFDFDFD) else Color(0xFF232323)
-        val linkColor = if (isDarkMode) Color(0xFF6A91B2) else Color(0xFF446987)
-
-        var apiKeyInput by remember { mutableStateOf(GeminiKit.getStoredApiKey(context) ?: "") }
-        var isValidating by remember { mutableStateOf(false) }
-        var showInvalidKeyError by remember { mutableStateOf(false) }
-        val coroutineScope = rememberCoroutineScope()
-        val scrollState = rememberScrollState()
-
-        // 번역 모델 후보(Remote Config)와 현재 선택값
-        val models = remember { viewModel.remoteConfigRepository.getGeminiTranslateModels() }
-        var selectedModel by remember { mutableStateOf<String?>(null) }
-        LaunchedEffect(Unit) {
-            val saved = viewModel.preferenceRepository.geminiModelFlow.first()
-            selectedModel = saved?.takeIf { it in models } ?: models.firstOrNull()
-        }
-
-        fun persistModel() {
-            selectedModel?.let { model ->
-                coroutineScope.launch {
-                    viewModel.preferenceRepository.update(PreferenceRepository.GEMINI_MODEL, model)
-                }
-            }
-        }
-
-        // 문맥/스타일 옵션. 저장값이 없으면 각 enum 의 기본값(주변 문장 / 직역 / 일반).
-        var contextMode by remember { mutableStateOf(TranslationContextMode.DEFAULT) }
-        var strength by remember { mutableStateOf(TranslationStrength.DEFAULT) }
-        var domain by remember { mutableStateOf(TranslationDomain.DEFAULT) }
-        LaunchedEffect(Unit) {
-            contextMode = viewModel.preferenceRepository.geminiContextModeFlow.first()
-            strength = viewModel.preferenceRepository.geminiTranslationStrengthFlow.first()
-            domain = viewModel.preferenceRepository.geminiTranslationDomainFlow.first()
-        }
-
-        fun persistOptions() {
-            coroutineScope.launch {
-                viewModel.preferenceRepository.update(PreferenceRepository.GEMINI_CONTEXT_MODE, contextMode.name)
-                viewModel.preferenceRepository.update(PreferenceRepository.GEMINI_TRANSLATION_STRENGTH, strength.name)
-                viewModel.preferenceRepository.update(PreferenceRepository.GEMINI_TRANSLATION_DOMAIN, domain.name)
-            }
-        }
-
-        fun saveApiKey() {
-            persistModel()
-            persistOptions()
-            val trimmedKey = apiKeyInput.trim()
-            if (trimmedKey.isEmpty()) {
-                GeminiKit.storeApiKey(context, "")
-                coroutineScope.launch {
-                    if (viewModel.preferenceRepository.translationKitTypeFlow.first() == TranslationKitType.GEMINI) {
-                        viewModel.preferenceRepository.update(PreferenceRepository.TRANSLATION_KIT_TYPE, TranslationKitType.GOOGLE.name)
-                    }
-                }
-                onDismissRequest()
-                return
-            }
-
-            isValidating = true
-            showInvalidKeyError = false
-            coroutineScope.launch {
-                when (GeminiKit.validateApiKey(trimmedKey)) {
-                    GeminiKit.KeyValidationResult.VALID -> {
-                        GeminiKit.storeApiKey(context, trimmedKey)
-                        // 키 유효 ≠ 크레딧 보유 — 기대치를 미리 맞춰 "앱 고장" 오해를 줄인다
-                        Toast.makeText(context, context.getString(R.string.key_saved_credit_hint), Toast.LENGTH_LONG).show()
-                        onDismissRequest()
-                    }
-
-                    GeminiKit.KeyValidationResult.INVALID -> {
-                        isValidating = false
-                        showInvalidKeyError = true
-                    }
-
-                    GeminiKit.KeyValidationResult.NETWORK_ERROR -> {
-                        GeminiKit.storeApiKey(context, trimmedKey)
-                        Toast.makeText(context, getString(R.string.deepl_key_network_error), Toast.LENGTH_LONG).show()
-                        onDismissRequest()
-                    }
-                }
-            }
-        }
-
-        @Composable
-        fun LinkText(text: String, url: String) {
-            Text(
-                text = text,
-                color = linkColor,
-                textDecoration = TextDecoration.Underline,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                modifier = Modifier
-                    .clickable {
-                        context.startActivitySafely(Intent(Intent.ACTION_VIEW, url.toUri()))
-                    }
-                    .padding(vertical = 6.dp),
-            )
-        }
-
-        Dialog(onDismissRequest = onDismissRequest) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = backgroundColor,
-                        shape = RoundedCornerShape(24.dp)
-                    )
-                    .padding(horizontal = 24.dp, vertical = 22.dp)
-            ) {
-                // 로고 + 타이틀
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ci_gemini),
-                        contentDescription = "Gemini logo",
-                        modifier = Modifier.size(26.dp),
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = TranslationKitType.GEMINI.text,
-                        color = titleColor,
-                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold),
-                    )
-                }
-
-                // 다이얼로그를 키우지 않기 위해 본문만 스크롤시킨다.
-                // 오른쪽 스크롤바가 "아래에 더 있다"는 신호가 된다.
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 340.dp)
-                        .verticalScrollbar(scrollState, contentColor.copy(alpha = 0.35f))
-                        .verticalScroll(scrollState)
-                        .padding(end = 8.dp),
-                ) {
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Text(
-                    text = getString(R.string.gemini_key_guide),
-                    color = contentColor,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = getString(R.string.gemini_key_signup_guide),
-                    color = contentColor,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                LinkText(
-                    text = getString(R.string.openai_key_link_keys),
-                    url = GeminiKit.URL_API_KEYS,
-                )
-                LinkText(
-                    text = getString(R.string.openai_key_link_billing),
-                    url = GeminiKit.URL_BILLING,
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                ApiKeyField(
-                    value = apiKeyInput,
-                    onValueChange = {
-                        apiKeyInput = it
-                        showInvalidKeyError = false
-                    },
-                    enabled = !isValidating,
-                    isError = showInvalidKeyError,
-                    contentColor = contentColor,
-                    linkColor = linkColor,
-                )
-
-                if (showInvalidKeyError) {
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = getString(R.string.deepl_key_invalid),
-                        color = Color(0xFFB3261E),
-                        style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                    )
-                }
-
-                // 번역 모델 선택
-                if (models.isNotEmpty()) {
-                    ModelDropdownField(
-                        label = getString(R.string.openai_model_label),
-                        models = models,
-                        selectedModel = selectedModel,
-                        enabled = !isValidating,
-                        titleColor = titleColor,
-                        contentColor = contentColor,
-                        linkColor = linkColor,
-                        onModelSelected = { selectedModel = it },
-                    )
-                }
-
-                    RadioOptionGroup(
-                        label = getString(R.string.translation_context_label),
-                        description = getString(R.string.translation_context_guide),
-                        options = TranslationContextMode.entries,
-                        selected = contextMode,
-                        enabled = !isValidating,
-                        labelOf = { getString(it.labelResourceId) },
-                        titleColor = titleColor,
-                        contentColor = contentColor,
-                        linkColor = linkColor,
-                        onSelected = { contextMode = it },
-                    )
-
-                    RadioOptionGroup(
-                        label = getString(R.string.translation_strength_label),
-                        options = TranslationStrength.entries,
-                        selected = strength,
-                        enabled = !isValidating,
-                        labelOf = { getString(it.labelResourceId) },
-                        titleColor = titleColor,
-                        contentColor = contentColor,
-                        linkColor = linkColor,
-                        onSelected = { strength = it },
-                    )
-
-                    RadioOptionGroup(
-                        label = getString(R.string.translation_domain_label),
-                        options = TranslationDomain.entries,
-                        selected = domain,
-                        enabled = !isValidating,
-                        labelOf = { getString(it.labelResourceId) },
-                        titleColor = titleColor,
-                        contentColor = contentColor,
-                        linkColor = linkColor,
-                        onSelected = { domain = it },
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    TextButton(
-                        onClick = onDismissRequest,
-                        enabled = !isValidating,
-                    ) {
-                        Text(
-                            text = stringResource(id = android.R.string.cancel),
-                            color = contentColor,
-                            fontSize = 15.sp,
-                        )
-                    }
-                    TextButton(
-                        onClick = { saveApiKey() },
-                        enabled = !isValidating,
-                    ) {
-                        Text(
-                            text = if (isValidating) getString(R.string.deepl_key_validating) else getString(R.string.label_save),
-                            color = linkColor,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Claude API 키 입력 + 번역 모델 선택 팝업. OpenAI/Gemini 다이얼로그와 같은 카드 스타일.
-     * 모델 후보는 Remote Config([RemoteConfigRepository.TRANSLATE_MODELS])에서 온다.
-     */
-    @Composable
-    fun ClaudeApiKeyDialog(
-        onDismissRequest: () -> Unit,
-    ) {
-        val context = LocalContext.current
-        val isDarkMode = isSystemInDarkTheme()
-        val backgroundColor = if (isDarkMode) Color(0xFF1F1F1F) else Color(0xFFFEFEFE)
-        val titleColor = if (isDarkMode) Color(0xFFFFFFFF) else Color(0xFF000000)
-        val contentColor = if (isDarkMode) Color(0xFFFDFDFD) else Color(0xFF232323)
-        val linkColor = if (isDarkMode) Color(0xFF6A91B2) else Color(0xFF446987)
-
-        var apiKeyInput by remember { mutableStateOf(ClaudeKit.getStoredApiKey(context) ?: "") }
-        var isValidating by remember { mutableStateOf(false) }
-        var showInvalidKeyError by remember { mutableStateOf(false) }
-        val coroutineScope = rememberCoroutineScope()
-        val scrollState = rememberScrollState()
-
-        // 번역 모델 후보(Remote Config)와 현재 선택값
-        val models = remember { viewModel.remoteConfigRepository.getClaudeTranslateModels() }
-        var selectedModel by remember { mutableStateOf<String?>(null) }
-        LaunchedEffect(Unit) {
-            val saved = viewModel.preferenceRepository.claudeModelFlow.first()
-            selectedModel = saved?.takeIf { it in models } ?: models.firstOrNull()
-        }
-
-        fun persistModel() {
-            selectedModel?.let { model ->
-                coroutineScope.launch {
-                    viewModel.preferenceRepository.update(PreferenceRepository.CLAUDE_MODEL, model)
-                }
-            }
-        }
-
-        // 문맥/스타일 옵션. 저장값이 없으면 각 enum 의 기본값(주변 문장 / 직역 / 일반).
-        var contextMode by remember { mutableStateOf(TranslationContextMode.DEFAULT) }
-        var strength by remember { mutableStateOf(TranslationStrength.DEFAULT) }
-        var domain by remember { mutableStateOf(TranslationDomain.DEFAULT) }
-        LaunchedEffect(Unit) {
-            contextMode = viewModel.preferenceRepository.claudeContextModeFlow.first()
-            strength = viewModel.preferenceRepository.claudeTranslationStrengthFlow.first()
-            domain = viewModel.preferenceRepository.claudeTranslationDomainFlow.first()
-        }
-
-        fun persistOptions() {
-            coroutineScope.launch {
-                viewModel.preferenceRepository.update(PreferenceRepository.CLAUDE_CONTEXT_MODE, contextMode.name)
-                viewModel.preferenceRepository.update(PreferenceRepository.CLAUDE_TRANSLATION_STRENGTH, strength.name)
-                viewModel.preferenceRepository.update(PreferenceRepository.CLAUDE_TRANSLATION_DOMAIN, domain.name)
-            }
-        }
-
-        fun saveApiKey() {
-            persistModel()
-            persistOptions()
-            val trimmedKey = apiKeyInput.trim()
-            if (trimmedKey.isEmpty()) {
-                ClaudeKit.storeApiKey(context, "")
-                coroutineScope.launch {
-                    if (viewModel.preferenceRepository.translationKitTypeFlow.first() == TranslationKitType.CLAUDE) {
-                        viewModel.preferenceRepository.update(PreferenceRepository.TRANSLATION_KIT_TYPE, TranslationKitType.GOOGLE.name)
-                    }
-                    // Claude 이미지 번역으로만 원문이 되는 언어였으면 auto 로 바꾼다(§25, 사용자 결정)
-                    if (ImageTranslation.isImageOnlyLanguage(viewModel.preferenceRepository.sourceLanguageCodeFlow.first())) {
-                        viewModel.preferenceRepository.update(PreferenceRepository.SOURCE_LANGUAGE_CODE, "auto")
-                    }
-                }
-                onDismissRequest()
-                return
-            }
-
-            isValidating = true
-            showInvalidKeyError = false
-            coroutineScope.launch {
-                when (ClaudeKit.validateApiKey(trimmedKey)) {
-                    ClaudeKit.KeyValidationResult.VALID -> {
-                        ClaudeKit.storeApiKey(context, trimmedKey)
-                        // 키 유효 ≠ 크레딧 보유 — 기대치를 미리 맞춰 "앱 고장" 오해를 줄인다
-                        Toast.makeText(context, context.getString(R.string.key_saved_credit_hint), Toast.LENGTH_LONG).show()
-                        onDismissRequest()
-                    }
-
-                    ClaudeKit.KeyValidationResult.INVALID -> {
-                        isValidating = false
-                        showInvalidKeyError = true
-                    }
-
-                    ClaudeKit.KeyValidationResult.NETWORK_ERROR -> {
-                        ClaudeKit.storeApiKey(context, trimmedKey)
-                        Toast.makeText(context, getString(R.string.deepl_key_network_error), Toast.LENGTH_LONG).show()
-                        onDismissRequest()
-                    }
-                }
-            }
-        }
-
-        @Composable
-        fun LinkText(text: String, url: String) {
-            Text(
-                text = text,
-                color = linkColor,
-                textDecoration = TextDecoration.Underline,
-                style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                modifier = Modifier
-                    .clickable {
-                        context.startActivitySafely(Intent(Intent.ACTION_VIEW, url.toUri()))
-                    }
-                    .padding(vertical = 6.dp),
-            )
-        }
-
-        Dialog(onDismissRequest = onDismissRequest) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = backgroundColor,
-                        shape = RoundedCornerShape(24.dp)
-                    )
-                    .padding(horizontal = 24.dp, vertical = 22.dp)
-            ) {
-                // 로고 + 타이틀
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ci_claude),
-                        contentDescription = "Claude logo",
-                        modifier = Modifier.size(26.dp),
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = TranslationKitType.CLAUDE.text,
-                        color = titleColor,
-                        style = MaterialTheme.typography.titleLarge.copy(fontSize = 16.sp, fontWeight = FontWeight.Bold),
-                    )
-                }
-
-                // 다이얼로그를 키우지 않기 위해 본문만 스크롤시킨다.
-                // 오른쪽 스크롤바가 "아래에 더 있다"는 신호가 된다.
-                Column(
-                    modifier = Modifier
-                        .heightIn(max = 340.dp)
-                        .verticalScrollbar(scrollState, contentColor.copy(alpha = 0.35f))
-                        .verticalScroll(scrollState)
-                        .padding(end = 8.dp),
-                ) {
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Text(
-                    text = getString(R.string.claude_key_guide),
-                    color = contentColor,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = getString(R.string.claude_key_signup_guide),
-                    color = contentColor,
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                LinkText(
-                    text = getString(R.string.openai_key_link_keys),
-                    url = ClaudeKit.URL_API_KEYS,
-                )
-                LinkText(
-                    text = getString(R.string.openai_key_link_billing),
-                    url = ClaudeKit.URL_BILLING,
+                    url = spec.urlBilling,
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))

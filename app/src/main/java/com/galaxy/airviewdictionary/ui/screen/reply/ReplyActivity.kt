@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.galaxy.airviewdictionary.data.local.preference.PreferenceRepository
 import com.galaxy.airviewdictionary.R
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
 import com.galaxy.airviewdictionary.data.remote.translation.Language
@@ -241,7 +242,7 @@ class ReplyActivity : AVDActivity() {
         // Reply transparency
         val replyTransparency by viewModel.preferenceRepository.replyTransparencyFlow.collectAsStateWithLifecycle(
             lifecycle = lifecycleOwner.lifecycle,
-            initialValue = 1.0f
+            initialValue = PreferenceRepository.DEFAULT_TRANSPARENCY
         )
 
         // translationKit Type

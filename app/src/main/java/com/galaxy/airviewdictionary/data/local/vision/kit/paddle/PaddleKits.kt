@@ -56,8 +56,7 @@ class PaddleKits(files: PaddleModelFiles) {
         val boxes = detected.lines.mapNotNull { line -> line.boundingBox?.let { intArrayOf(it.left, it.top, it.right, it.bottom) } }
         val lines = ScriptGate.pickLines(boxes, screen.width)
         if (lines.size < ScriptGate.MIN_LINES) return@withContext null
-        val threads = gateThreads; val spinning = gateSpinning
-        val session = sessions.session(ScriptGate.MODEL, threads, keepArena = true, spinning = spinning, key = "${ScriptGate.MODEL}/$threads/$spinning")
+        val session = sessions.session(ScriptGate.MODEL, GATE_THREADS, keepArena = true)
             ?: return@withContext null
         // 줄마다 따로 전처리한다(S26 에서 줄 12개 직렬 13ms)
         val inputs = coroutineScope {
@@ -85,24 +84,12 @@ class PaddleKits(files: PaddleModelFiles) {
     }
 
     /**
-     * auto 의 PP-OCRv5 후보 — 확인 라운드로 채택한 규칙(§13.4). 한 번 검출해 가장 넓은 [SAMPLE_LINES] 줄을 세 모델이 각각 읽고,
-     * 읽은 글이 **그 모델의 문자권**이면(글자 중 그 문자 비율 ≥ 0.5, 그 문자 10자 이상, 평균 신뢰도 ≥ 0.4) 인정한다. 인정된 후보만,
-     * 평균 신뢰도가 높은 순으로 돌려준다. 모델이 아직 없거나 스위치로 꺼 두었으면 빈 목록.
-     *
-     * 후보의 [AutoCandidate.ocr] 는 검출한 화면 전체다 — 표본으로 읽은 줄만 읽힌 채이고 나머지는 읽지 않았다. 이긴 후보는 이것으로
-     * 검출만 된 화면을 만들고, 표본 줄은 다시 읽지 않는다.
-     */
-    suspend fun autoCandidates(screen: Bitmap): List<AutoCandidate> =
-        autoDetect(screen)?.let { autoCandidates(screen, it) } ?: emptyList()
-
-    /**
      * auto 의 화면 검출만. 모델이 아직 없거나 스위치로 꺼 두었으면 null. auto 는 이 검출로 라틴 인식기가 글자 자리를 얼마나 덮었는지도 본다
      * (`.docs/perf-experiment-plan.md` §5) — 그래서 표본 읽기([autoCandidates])와 나눠 두었다.
      */
     suspend fun autoDetect(screen: Bitmap): OcrText? {
         if (!PaddleSwitch.autoEnabled) return null
-        val ready = withContext(Dispatchers.Default) { scripts.keys.filter { it.isReady() } }
-        return ready.firstOrNull()?.detect(screen)
+        return detectOnly(screen)
     }
 
     /**
@@ -111,8 +98,22 @@ class PaddleKits(files: PaddleModelFiles) {
      */
     suspend fun detectLines(screen: Bitmap): OcrText? {
         if (!PaddleSwitch.enabled) return null
-        val ready = withContext(Dispatchers.Default) { scripts.keys.firstOrNull { it.isReady() } } ?: return null
-        return ready.detect(screen)
+        return detectOnly(screen)
+    }
+
+    /** 준비된 문자권 엔진(모델이 다 있고 실패한 적 없음). 파일을 볼 수 있어 주 스레드에서 하지 않는다. */
+    private suspend fun readyKits(): List<PaddleOcrVisionKit> = withContext(Dispatchers.Default) { scripts.keys.filter { it.isReady() } }
+
+    /**
+     * 검출기만으로 줄 상자를 찾는다 — 인식기 세션은 만들지 않는다(읽을 때 만든다). 준비된 엔진이 없으면 null, 검출기 세션을 만들 수 없으면
+     * 던진다(부르는 쪽이 ML Kit 으로 간다). 코드 정리 B6 — 문자권 엔진을 거쳐 검출하면 쓰지 않을 인식기 세션까지 만들었다(이미지 번역 대상 찾기).
+     */
+    private suspend fun detectOnly(screen: Bitmap): OcrText? {
+        if (readyKits().isEmpty()) return null
+        return withContext(Dispatchers.Default) {
+            check(detector.prepare()) { "PP-OCRv5 검출기 세션을 만들 수 없다" }
+            PaddleOcrVisionKit.linesOf(detector.detect(screen))
+        }
     }
 
     /**
@@ -121,15 +122,22 @@ class PaddleKits(files: PaddleModelFiles) {
      */
     suspend fun fingerprint(screen: Bitmap): String? {
         if (!PaddleSwitch.enabled) return null
-        val ready = withContext(Dispatchers.Default) { scripts.keys.firstOrNull { it.isReady() } } ?: return null
+        val ready = readyKits().firstOrNull() ?: return null
         val lines = ready.detect(screen).lines
         if (lines.isEmpty()) return ""
         return ReadingOrder.text(ready.recognize(screen, lines))
     }
 
-    /** [autoDetect] 한 화면으로 표본을 읽는다. */
+    /**
+     * auto 의 PP-OCRv5 후보 — 확인 라운드로 채택한 규칙(§13.4). 검출한 화면에서 가장 넓은 [SAMPLE_LINES] 줄을 세 모델이 각각 읽고,
+     * 읽은 글이 **그 모델의 문자권**이면(글자 중 그 문자 비율 ≥ 0.5, 그 문자 10자 이상, 평균 신뢰도 ≥ 0.4) 인정한다. 인정된 후보만,
+     * 평균 신뢰도가 높은 순으로 돌려준다. 모델이 아직 없으면 빈 목록. [detected] 는 [autoDetect] 한 화면이다.
+     *
+     * 후보의 [AutoCandidate.ocr] 는 검출한 화면 전체다 — 표본으로 읽은 줄만 읽힌 채이고 나머지는 읽지 않았다. 이긴 후보는 이것으로
+     * 검출만 된 화면을 만들고, 표본 줄은 다시 읽지 않는다.
+     */
     suspend fun autoCandidates(screen: Bitmap, detected: OcrText): List<AutoCandidate> = coroutineScope {
-        val ready = withContext(Dispatchers.Default) { scripts.keys.filter { it.isReady() } }
+        val ready = readyKits()
         if (ready.isEmpty()) return@coroutineScope emptyList()
         val sample = detected.lines.sortedByDescending { it.boundingBox?.width() ?: 0 }.take(SAMPLE_LINES)
         if (sample.isEmpty()) return@coroutineScope emptyList()
@@ -182,13 +190,11 @@ class PaddleKits(files: PaddleModelFiles) {
 
         private const val SAMPLE_LINES = 4
 
-        /** 관문 판별의 추론 스레드 — 줄 12개 한 번이다. S26 에서 2스레드 49ms · 4스레드 31ms(성능 P7 기기 측정, 조건 50ms). 기기 비교 시험이 바꾼다. */
-        @Volatile
-        internal var gateThreads = 4
-
-        /** 관문 추론 스레드가 일이 끝난 뒤 기다리며 CPU 를 도는가(ONNX Runtime 기본값). 기기 비교 시험이 바꾼다. */
-        @Volatile
-        internal var gateSpinning = true
+        /**
+         * 관문 판별의 추론 스레드 — 줄 12개 한 번이다. S26 에서 2스레드 49ms · 4스레드 31ms. 스레드를 줄이거나 대기 회전을 꺼도 다른 인식기와의
+         * 다툼이 줄지 않았다(성능 P7 §7.6).
+         */
+        private const val GATE_THREADS = 4
         private const val MIN_OWN_FRACTION = 0.5
         private const val MIN_OWN_LETTERS = 10
         private const val MIN_MEAN_CONFIDENCE = 0.4

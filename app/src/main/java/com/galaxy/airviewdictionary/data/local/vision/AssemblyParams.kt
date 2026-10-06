@@ -3,7 +3,7 @@ package com.galaxy.airviewdictionary.data.local.vision
 import com.galaxy.airviewdictionary.data.remote.translation.Language
 
 /**
- * 조립 기준값 한 벌. 조립 함수([VisionRepository.groupWordsIntoLines] 등)가 인자로 받는다.
+ * 조립 기준값 한 벌. 조립 함수([ParagraphAssembler.groupWordsIntoLines] 등)가 인자로 받는다.
  *
  * 예전에는 [VisionRepository](싱글턴)의 필드였다. 요청마다 `setReferenceConstantValue` 로 채우고 조립했는데, 요청이 겹치면(앞 제스처의
  * auto 인식이 새 제스처와 함께 돌 때 등) 한 요청이 다른 요청의 값으로 조립했다. 이제 요청마다 [reference] 로 만든 값을 조립 끝까지 들고 간다.
@@ -87,30 +87,8 @@ internal data class AssemblyParams(
      */
     val LINE_MEASURE_ALONG_WRITING_AXIS: Boolean = false,
 
-    /**
-     * 앱 화면의 제목과 그 아래 부제를 가르는 규칙(3라운드 E3′, `.docs/geometry-experiment-plan-round3.md` §3).
-     * 0 이면 끈다. 실험이 판정하기 전까지 끈다.
-     *
-     * 문단이 아직 한 행뿐일 때(그 행이 제목 후보) 다음 줄이 셋을 모두 만족하면 새 문단으로 본다 — 글자 높이가
-     * 제목의 [LINE_HEADING_HEIGHT_RATIO] 배 미만, 제목이 화면 글 끝보다 제목 높이의 2배 넘게 짧음, 제목 폭이
-     * 화면 글 폭의 [LINE_HEADING_WIDTH_RATIO] 배 미만. 높이 비만으로는 웹 문단의 13% 에서 잘못 발동한다 — 웹
-     * 문단의 첫 행은 감싸여 단 끝까지 가므로 뒤의 둘이 웹을 지킨다. 가로 경로에서만.
-     */
-    val LINE_HEADING_HEIGHT_RATIO: Double = 0.0,
-    val LINE_HEADING_WIDTH_RATIO: Double = 0.0,
-
-    /** 세로 분기에서 ML Kit 이 끊어 준 한 열의 조각을 문단 묶기 전에 잇는다(3라운드 E1′, [VisionRepository.mergeColumnPieces]). */
-    val VERTICAL_COLUMN_MERGE: Boolean = false,
-
-    /** 세로 분기에서 쪼개기 후처리([VisionRepository.detectAndSplitParagraphs])를 돌릴지(3라운드 E1′). */
+    /** 세로 분기에서 쪼개기 후처리([ParagraphAssembler.detectAndSplitParagraphs])를 돌릴지(3라운드 E1′). */
     val VERTICAL_SPLIT: Boolean = true,
-
-    /**
-     * 단어를 줄로 이을 때 표의 열 틈을 볼지(3라운드 E2′). 0 이면 끈다. n 이면, 0.63 폰트높이를 넘는
-     * 틈(1.5 로 새로 허용된 틈)에 대해 위아래 3행 중 같은 가로 구간에 벌어진 틈이 있는 행이 n 개 이상일 때
-     * 표의 열 경계로 보고 잇지 않는다.
-     */
-    val WORD_COLUMN_GAP_ROWS: Int = 0,
 ) {
     companion object {
         /**
@@ -176,7 +154,7 @@ internal data class AssemblyParams(
             // 재면 열의 폭(글자 두께)이라 늘 ~1.0 이어서 문단이 통째로 붙었다. 쪼개기는 세로에서 "나란한 두 단" 이
             // 아니라 "한 열의 조각" 에 반응해 발동했다. 3라운드 E1′ holdout(세로 28면, 채점 108): 온전한 문단
             // 36 → 64%, 오염 528 → 73, 순서 위반 0 → 0, 가로 340면 변화 0(.docs/results/round-3, 2026-09-24).
-            // 4라운드에서 새 표본으로 재현을 확인한 뒤 출시한다.
+            // 4라운드에서 새 표본으로 재현을 확인하고 출시하였다(커밋 b4e5173f).
             return base.copy(
                 LINE_MEASURE_ALONG_WRITING_AXIS = true,
                 LINE_FILL_MINIMUM_RATIO = 0.80,

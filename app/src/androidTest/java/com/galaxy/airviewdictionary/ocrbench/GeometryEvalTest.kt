@@ -1,5 +1,6 @@
 package com.galaxy.airviewdictionary.ocrbench
 
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler
 import androidx.test.platform.app.InstrumentationRegistry
 import com.galaxy.airviewdictionary.data.local.vision.VisionRepository
 import org.junit.Test
@@ -256,7 +257,7 @@ class GeometryEvalTest {
             val gaps = mutableListOf<Double>()
             for (sample in samples) {
                 if (sample.input != InputUnit.WORDS) continue // 앱이 줄을 유도하는 경로에만 해당한다
-                val lines = repository.groupWordsIntoLines(sample.buildWords(), sample.direction, setting.paramsFor(sample))
+                val lines = ParagraphAssembler.groupWordsIntoLines(sample.buildWords(), sample.direction, setting.paramsFor(sample))
                 for (band in EvalMetrics.bands(lines, sample.isVertical) { it.boundingBox }) {
                     bands++
                     if (band.size < 2) continue
@@ -402,12 +403,12 @@ class GeometryEvalTest {
                 val vertical = direction == com.galaxy.airviewdictionary.data.local.vision.WritingDirection.TTB_RTL ||
                         direction == com.galaxy.airviewdictionary.data.local.vision.WritingDirection.TTB_LTR
                 c[0]++
-                val split = repository.detectAndSplitParagraphs(paragraph, direction)
+                val split = ParagraphAssembler.detectAndSplitParagraphs(paragraph, direction)
                 if (split.size > 1) {
                     c[1]++; c[2] += split.size
                     // 세로 문단은 다시 합치지 않는다 — 쪼개진 그대로 최종 출력에 남는다.
                     val after = if (vertical) split
-                    else repository.correctDetectAndSplitParagraphs(split, direction)
+                    else ParagraphAssembler.correctDetectAndSplitParagraphs(split, direction)
                     c[3] += after.size
                     fired.add("${sample.name} ${if (vertical) "세로" else "가로"} " +
                             "${paragraph.lines.size}줄 → ${split.size}조각 → ${after.size}")

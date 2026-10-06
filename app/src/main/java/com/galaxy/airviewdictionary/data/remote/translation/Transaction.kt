@@ -8,8 +8,8 @@ package com.galaxy.airviewdictionary.data.remote.translation
  * - **킷**은 자기가 아는 것만 채운다 — [sourceText], [resolvedSourceLanguageCode](판정했을 때만),
  *   [resultText], [modelName], [translationKitType].
  *   [targetId] 와 [requestedSourceLanguageCode] 는 킷이 모르는 값이라 건드리지 않는다.
- * - **파이프라인**(TargetHandleViewModel)이 그 결과를 받아 나머지를 채우고 빈 값을 메운다.
- *   확정은 거기 한 곳에서만 일어난다.
+ * - **파이프라인**(포인터 모드 · 고정 영역)이 그 결과를 [confirmed] 로 받아 나머지를 채우고 빈 값을 메운다.
+ *   확정은 그 함수 한 곳에서만 일어난다(코드 정리 B2).
  *
  * 이 분담이 필요한 이유: 킷마다 아는 것이 다르다. 원문 언어를 판정해 돌려주는 킷도 있고
  * 아닌 킷도 있다. 그 차이를 파이프라인에서 한 번 흡수하고, 그 아래로는 출처를 묻지 않는 값만 내려보낸다.
@@ -29,7 +29,7 @@ data class Transaction(
     /**
      * 확정된 원문 언어. "auto" 가 들어오지 않으며, 끝내 못 정했으면 null.
      *
-     * 쓰기 방향·TTS 목소리·답장 언어·애널리틱스는 모두 이 값만 본다.
+     * TTS 목소리·답장 언어·애널리틱스는 이 값만 본다. 쓰기 방향은 이 값이 없을 때(못 정함)만 설정값으로 대신한다.
      * 예전에는 설정값(auto 포함)과 감지값이 별도 필드로 공존해서, 소비처마다
      * 둘 중 무엇을 볼지 제각기 정하다가 조용히 어긋났다.
      */
@@ -78,3 +78,26 @@ data class Transaction(
  */
 val Transaction.detectedLanguageLabel: String
     get() = if (showsDetectedLanguage) "[${Language(resolvedSourceLanguageCode!!).displayName}] " else ""
+
+/**
+ * 킷이 보고한 결과를 화면 · TTS · 답장 · 애널리틱스가 그대로 믿고 쓸 수 있게 확정한다. 포인터 모드와 고정 영역이 같이 쓴다(코드 정리 B2 — 세 벌이
+ * 있었고 고정 영역의 글 번역은 원문을 늘 OCR 글로 두었다).
+ *
+ * 원문 언어는 킷이 판정했으면 그 값, 아니면 OCR 이 판정한 [ocrSourceLanguageCode] 다("auto" · "und" 는 판정 못 한 것 — [TranslationSourceLanguage.resolved]).
+ * 원문은 킷이 돌려준 것, 없으면 [fallbackSourceText].
+ */
+fun Transaction.confirmed(
+    requestedSourceLanguageCode: String,
+    ocrSourceLanguageCode: String?,
+    fallbackSourceText: String? = null,
+    targetId: Long? = null,
+): Transaction = Transaction(
+    targetId = targetId,
+    requestedSourceLanguageCode = requestedSourceLanguageCode,
+    resolvedSourceLanguageCode = TranslationSourceLanguage.resolved(resolvedSourceLanguageCode, ocrSourceLanguageCode),
+    targetLanguageCode = targetLanguageCode,
+    sourceText = sourceText?.takeIf { it.isNotBlank() } ?: fallbackSourceText,
+    translationKitType = translationKitType,
+    resultText = resultText,
+    modelName = modelName,
+)

@@ -1,5 +1,8 @@
 package com.galaxy.airviewdictionary.data.remote.translation.gemini
 
+import com.galaxy.airviewdictionary.data.remote.translation.KeyValidationResult
+import com.galaxy.airviewdictionary.data.remote.translation.ApiKeyStore
+import com.galaxy.airviewdictionary.data.remote.translation.AiTranslationKit
 import android.content.Context
 import com.galaxy.airviewdictionary.data.local.preference.PreferenceRepository
 import com.galaxy.airviewdictionary.data.local.secure.SecureStore
@@ -7,11 +10,7 @@ import com.galaxy.airviewdictionary.data.local.secure.SecureStoreKey
 import com.galaxy.airviewdictionary.data.remote.firebase.RemoteConfigRepository
 import com.galaxy.airviewdictionary.data.remote.translation.Language
 import com.galaxy.airviewdictionary.data.remote.translation.Transaction
-import com.galaxy.airviewdictionary.data.remote.translation.TranslationKit
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
-import com.galaxy.airviewdictionary.data.remote.translation.TranslationDomain
-import com.galaxy.airviewdictionary.data.remote.translation.TranslationStrength
-import com.galaxy.airviewdictionary.data.remote.translation.buildTranslationSystemPrompt
 import com.galaxy.airviewdictionary.data.remote.translation.buildTranslationUserMessage
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationResponse
 import com.galaxy.airviewdictionary.data.remote.translation.goolge.GoogleWebKit
@@ -20,9 +19,7 @@ import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -46,10 +43,10 @@ import javax.inject.Singleton
 class GeminiKit @Inject constructor(
     @ApplicationContext private val context: Context,
     @GeminiRetrofit private val service: GeminiService,
-    private val googleWebKit: GoogleWebKit,
+    googleWebKit: GoogleWebKit,
     private val preferenceRepository: PreferenceRepository,
     private val remoteConfigRepository: RemoteConfigRepository,
-) : TranslationKit() {
+) : AiTranslationKit(TranslationKitType.GEMINI, googleWebKit) {
 
     override fun available(): Boolean {
         return getStoredApiKey(context) != null
@@ -59,59 +56,11 @@ class GeminiKit @Inject constructor(
         refreshAvailability(context)
     }
 
-    // Gemini 는 사실상 전 언어를 번역하므로 Google 과 동일한 언어 커버리지를 사용한다.
-    override val supportedLanguagesAsSource: List<Language> by lazy {
-        googleWebKit.supportedLanguagesAsSource.map {
-            Language(it.code).apply { supportKitTypes.add(TranslationKitType.GEMINI) }
-        }
-    }
-
-    override val supportedLanguagesAsTarget: List<Language> by lazy {
-        googleWebKit.supportedLanguagesAsTarget.map {
-            Language(it.code).apply { supportKitTypes.add(TranslationKitType.GEMINI) }
-        }
-    }
-
-    override fun isSupportedAsSource(code: String, targetLanguageCode: String): Boolean {
-        return supportedLanguagesAsSource.any { it.code.equals(code, ignoreCase = true) } &&
-                supportedLanguagesAsTarget.any { it.code.equals(targetLanguageCode, ignoreCase = true) }
-    }
-
-    override fun isSupportedAsTarget(code: String, sourceLanguageCode: String): Boolean {
-        return supportedLanguagesAsTarget.any { it.code.equals(code, ignoreCase = true) } &&
-                supportedLanguagesAsSource.any { it.code.equals(sourceLanguageCode, ignoreCase = true) }
-    }
-
-    override fun isLanguageSwappable(sourceLanguageCode: String, targetLanguageCode: String): Boolean {
-        return isSupportedAsSource(targetLanguageCode, sourceLanguageCode) &&
-                isSupportedAsTarget(sourceLanguageCode, targetLanguageCode)
-    }
-
-    private fun buildSystemPrompt(
-        sourceLanguageCode: String,
-        targetLanguageCode: String,
-        strength: TranslationStrength,
-        domain: TranslationDomain,
-        hasContext: Boolean,
-    ): String = buildTranslationSystemPrompt(
-        sourceLanguageName = if (sourceLanguageCode == "auto") null else Language(sourceLanguageCode).displayName,
-        targetLanguageName = Language(targetLanguageCode).displayName,
-        strength = strength,
-        domain = domain,
-        hasContext = hasContext,
-    )
-
     /**
      * 사용할 모델. 설정에서 고른 값이 있고 현재 후보에 있으면 그것을, 아니면 후보의 첫 번째를, 그마저 없으면 기본값.
      */
     private suspend fun resolveModel(): String {
-        val chosen = preferenceRepository.geminiModelFlow.first()?.takeIf { it.isNotBlank() }
-        val candidates = remoteConfigRepository.getGeminiTranslateModels()
-        return when {
-            chosen != null && chosen in candidates -> chosen
-            candidates.isNotEmpty() -> candidates.first()
-            else -> chosen ?: DEFAULT_MODEL
-        }
+        return pickModel(preferenceRepository.geminiModelFlow.first(), remoteConfigRepository.getGeminiTranslateModels(), DEFAULT_MODEL)
     }
 
     override suspend fun request(
@@ -185,30 +134,6 @@ class GeminiKit @Inject constructor(
         }
     }
 
-    /** LLM 이 종종 붙이는 코드펜스/따옴표/여백을 정리한다. */
-    private fun cleanOutput(raw: String): String {
-        var text = raw.trim()
-        if (text.startsWith("```")) {
-            text = text.removePrefix("```").substringAfter('\n', "").trim()
-            text = text.removeSuffix("```").trim()
-        }
-        if (text.length >= 2 &&
-            ((text.first() == '"' && text.last() == '"') || (text.first() == '\'' && text.last() == '\''))
-        ) {
-            text = text.substring(1, text.length - 1).trim()
-        }
-        return text
-    }
-
-    /**
-     * API 키 검증 결과. 네트워크 오류는 키 자체의 문제가 아니므로 무효와 구분한다.
-     */
-    enum class KeyValidationResult {
-        VALID,
-        INVALID,
-        NETWORK_ERROR,
-    }
-
     companion object {
         const val BASE_URL = "https://generativelanguage.googleapis.com/"
 
@@ -245,26 +170,15 @@ class GeminiKit @Inject constructor(
             }
         }
 
-        /**
-         * 저장된 API 키 존재 여부. 엔진 전환기 노출과 설정의 활성 표시가 이 값을 따른다.
-         */
-        private val _keyActivatedStateFlow = MutableStateFlow(false)
-        val keyActivatedStateFlow: StateFlow<Boolean> = _keyActivatedStateFlow.asStateFlow()
+        /** 개인 API 키와 등록 여부([ApiKeyStore]). 엔진 전환기 노출과 설정의 활성 표시가 [keyActivatedStateFlow] 를 따른다. */
+        private val keys = ApiKeyStore(SecureStoreKey.GEMINI_API_KEY, "GeminiKit")
 
-        fun refreshAvailability(context: Context) {
-            _keyActivatedStateFlow.value = getStoredApiKey(context) != null
-        }
+        val keyActivatedStateFlow: StateFlow<Boolean> get() = keys.activated
 
-        /** 설정에서 저장한 API 키. 없거나 공백이면 null. */
-        fun getStoredApiKey(context: Context): String? {
-            return SecureStore.get(context, SecureStoreKey.GEMINI_API_KEY)?.get()?.takeIf { it.isNotBlank() }
-        }
+        fun refreshAvailability(context: Context) = keys.refresh(context)
 
-        /** 설정에서 입력한 API 키를 암호화 저장한다. 빈 문자열 저장은 키 삭제로 동작한다. */
-        fun storeApiKey(context: Context, apiKey: String) {
-            SecureStore.set(context, SecureStoreKey.GEMINI_API_KEY, apiKey.trim())
-            refreshAvailability(context)
-            Timber.tag("GeminiKit").i("storeApiKey saved (${apiKey.trim().length} chars)")
-        }
+        fun getStoredApiKey(context: Context): String? = keys.get(context)
+
+        fun storeApiKey(context: Context, apiKey: String) = keys.store(context, apiKey)
     }
 }

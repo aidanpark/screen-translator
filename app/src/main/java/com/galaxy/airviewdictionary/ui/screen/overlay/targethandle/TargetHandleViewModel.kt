@@ -18,7 +18,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.galaxy.airviewdictionary.R
-import com.galaxy.airviewdictionary.data.local.capture.CapturePreventedException
 import com.galaxy.airviewdictionary.data.local.capture.CaptureRepository
 import com.galaxy.airviewdictionary.data.local.capture.CaptureResponse
 import com.galaxy.airviewdictionary.data.local.capture.NoMediaProjectionTokenException
@@ -38,7 +37,7 @@ import com.galaxy.airviewdictionary.data.local.vision.model.Sentence
 import com.galaxy.airviewdictionary.data.local.vision.model.VisionResponse
 import com.galaxy.airviewdictionary.data.local.vision.model.VisionText
 import com.galaxy.airviewdictionary.data.local.vision.model.Word
-import com.galaxy.airviewdictionary.data.local.vision.model.Transaction as VisionTransaction
+import com.galaxy.airviewdictionary.data.local.vision.model.VisionResult
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrText
 import com.galaxy.airviewdictionary.data.remote.firebase.AnalyticsRepository
 import com.galaxy.airviewdictionary.data.remote.firebase.RemoteConfigRepository
@@ -46,6 +45,8 @@ import com.galaxy.airviewdictionary.data.remote.translation.ImageTargetNarrowing
 import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
 import com.galaxy.airviewdictionary.data.remote.translation.NoTextInImageException
 import com.galaxy.airviewdictionary.data.remote.translation.Transaction
+import com.galaxy.airviewdictionary.data.remote.translation.TranslationSourceLanguage
+import com.galaxy.airviewdictionary.data.remote.translation.confirmed
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationErrorMessages
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationContextMode
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
@@ -94,7 +95,6 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import timber.log.Timber
 import java.util.Locale
 import kotlin.math.sqrt
@@ -168,7 +168,7 @@ class TargetHandleViewModel(
     /**
      * 캡처된 bitmap 의 OCR api 요청 결과.
      */
-    val visionResultFlow = MutableStateFlow<com.galaxy.airviewdictionary.data.local.vision.model.Transaction?>(null)
+    val visionResultFlow = MutableStateFlow<VisionResult?>(null)
 
     /**
      * screen capture 진행상태의 flow.
@@ -223,13 +223,9 @@ class TargetHandleViewModel(
             .map { remoteConfig ->
                 Timber.tag(TAG).i("remoteConfig: $remoteConfig")
 
-                val serviceAvailable: Boolean = remoteConfig[RemoteConfigRepository.SERVICE_AVAILABLE_KEY]?.asString()?.let {
-                    val jsonObject = JSONObject(it)
-                    Timber.tag(TAG).d("jsonObject: $jsonObject")
-                    val defaultServiceAvailable = jsonObject.getBoolean("default")
-                    Timber.tag(TAG).d("defaultServiceAvailable: $defaultServiceAvailable")
-                    jsonObject.optBoolean(Locale.getDefault().country, defaultServiceAvailable)
-                } ?: true
+                val serviceAvailable: Boolean = RemoteConfigRepository.serviceAvailable(
+                    remoteConfig[RemoteConfigRepository.SERVICE_AVAILABLE_KEY]?.asString(), Locale.getDefault().country,
+                )
                 Timber.tag(TAG).i("serviceAvailable: $serviceAvailable")
 
                 val packageInfo = applicationContext.packageManager.getPackageInfo(applicationContext.packageName, 0)
@@ -251,8 +247,10 @@ class TargetHandleViewModel(
 
     private fun collectServiceOperationInfoFlow() {
         viewModelScope.launch {
+            // 새 값이 오면 기다리던 안내를 버린다 — 앱 시작 직후 지난번 캐시값(점검 중)으로 기다리는 사이 fetch 가 새 값을 가져올 수 있다
+            // (Remote Config 흐름은 기본값을 넣은 직후 한 번 내보낸다, 코드 정리 B7)
             serviceOperationInfoFlow
-                .collect { remoteConfig: RemoteConfig ->
+                .collectLatest { remoteConfig: RemoteConfig ->
                     Timber.tag(TAG).i("remoteConfig: $remoteConfig")
                     // 서비스 점검중 입니다.
                     if (!remoteConfig.serviceAvailable) {
@@ -297,7 +295,7 @@ class TargetHandleViewModel(
     val dragHandleDocking: Boolean
         get() = _dragHandleDocking
 
-    private var _dockingDelay = 3000L
+    private var _dockingDelay = PreferenceRepository.DEFAULT_DOCKING_DELAY
 
     val dockingDelay: Long
         get() = _dockingDelay
@@ -415,6 +413,9 @@ class TargetHandleViewModel(
         ocrRunningFlow.value = true
         captureStatusFlow.value = CaptureStatus.Requested
 
+        // 고른 AI 엔진 서버와 연결을 미리 맺는다 — 캡처 · 인식 동안 맺어져 번역 요청이 다시 쓴다(첫 요청 지연 줄이기)
+        viewModelScope.launch { translationRepository.warmUp(preferenceRepository.translationKitTypeFlow.first()) }
+
         viewModelScope.launch {
             Timber.tag(TAG).d("requestCapture viewModelScope.launch -------------- 0")
             // 캡처 전 화면에 보여지는 OverlayView 들을 숨기기 위한 딜레이
@@ -447,27 +448,28 @@ class TargetHandleViewModel(
                 }
             } else if (captureResponse is CaptureResponse.Error) {
                 Timber.tag(TAG).d("CaptureResponse.Error ${captureResponse.t.toString()}")
-                if (captureResponse.t is NoMediaProjectionTokenException) {
+                if (requestCapturePermissionIfNeeded(captureResponse.t)) {
                     captureStatusFlow.value = CaptureStatus.PermissionRequested
                     ocrRunningFlow.value = false
-                    // 화면 캡처 권한을 요청
-                    val intent = Intent(
-                        applicationContext,
-                        ScreenCapturePermissionRequesterActivity::class.java
-                    )
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    applicationContext.startActivity(intent)
                 } else {
-                    if (captureResponse.t is CapturePreventedException) {
-                        // 캡처 방지 알림
-                        // captureResponse.t.checkerBitmap 처리
-                    }
-                    // 권한 요청이 아닌 모든 실패는 상태를 되돌린다.
+                    // 권한 요청이 아닌 모든 실패(캡처 방지 등)는 상태를 되돌린다.
                     // (되돌리지 않으면 핸들이 투명한 채로 남는다)
                     cancelCapture()
                 }
             }
         }
+    }
+
+    /**
+     * 캡처 실패가 화면 녹화 권한이 없어서면 권한 요청 화면을 띄우고 true. 그 밖의 실패(캡처 방지 등)는 false — 상태를 되돌리는 일은 모드마다
+     * 다르므로 부르는 쪽이 한다. 포인터 모드 · 영역 선택 · 고정 영역이 같이 쓴다(코드 정리 B2).
+     */
+    fun requestCapturePermissionIfNeeded(error: Throwable): Boolean {
+        if (error !is NoMediaProjectionTokenException) return false
+        applicationContext.startActivity(
+            Intent(applicationContext, ScreenCapturePermissionRequesterActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+        return true
     }
 
     fun cancelCapture() {
@@ -495,9 +497,6 @@ class TargetHandleViewModel(
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
     /**
-     * 캡처된 bitmap 의 OCR 을 요청한다.
-     */
-    /**
      * 번역 대상 주변의 화면 텍스트를 문맥으로 모은다.
      *
      * 설정이 [TranslationContextMode.OFF] 이거나 문맥이 대상과 같으면 null 을 돌려 보내
@@ -505,7 +504,7 @@ class TargetHandleViewModel(
      */
     private suspend fun buildContextText(
         kitType: TranslationKitType,
-        transaction: com.galaxy.airviewdictionary.data.local.vision.model.Transaction,
+        transaction: VisionResult,
         target: com.galaxy.airviewdictionary.data.local.vision.model.VisionText,
     ): String? {
         val mode = preferenceRepository.contextModeFlow(kitType).first()
@@ -533,26 +532,21 @@ class TargetHandleViewModel(
         return context.takeIf { it.isNotBlank() && it != target.representation.trim() }
     }
 
-    /** [epoch] 는 이 캡처를 요청한 제스처 세대. 결과가 돌아왔을 때 세대가 바뀌었으면(새 제스처) 버린다. */
+    /** 캡처된 bitmap 의 OCR 을 요청한다. [epoch] 는 이 캡처를 요청한 제스처 세대. 결과가 돌아왔을 때 세대가 바뀌었으면(새 제스처) 버린다. */
     private suspend fun requestVision(capturedBitmap: Bitmap, epoch: Int) {
         Timber.tag(TAG).i("#### requestVision() ####")
 
         val sourceLanguageCode: String = preferenceRepository.sourceLanguageCodeFlow.first()
         val translationKitType: TranslationKitType = preferenceRepository.translationKitTypeFlow.first()
         val visionResponse: VisionResponse = if (translationRepository.usesImageTranslation(translationKitType, sourceLanguageCode)) {
-            // AI 이미지 번역 — 줄 위치만 찾는다(§25). 모델 팩이 아직 없으면 auto 는 글 번역으로, 읽을 엔진이 없는 언어는 포인터 둘레 띠로
+            // AI 이미지 번역(읽을 엔진이 없는 언어만, §25) — 줄 위치만 찾는다. 모델 팩이 아직 없으면 포인터 둘레 띠로
             visionRepository.requestImageTargets(capturedBitmap, sourceLanguageCode)
-                ?: if (ImageTranslation.isImageOnlyLanguage(sourceLanguageCode)) {
-                    VisionResponse.Success(
-                        VisionTransaction(capturedBitmap, OcrText("", emptyList()), sourceLanguageCode, emptyList(), image = ImageTargets.PointerBand)
-                    )
-                } else null
-        } else {
-            null
-        } ?: visionRepository.request(
+                ?: VisionResponse.Success(
+                    VisionResult(capturedBitmap, OcrText("", emptyList()), sourceLanguageCode, emptyList(), image = ImageTargets.PointerBand)
+                )
+        } else visionRepository.request(
             bitmap = capturedBitmap,
-            // 읽을 엔진이 없는 언어인데 이미지 번역을 못 하면(원격 스위치를 껐다) auto 로 읽는다
-            sourceLanguageCode = if (ImageTranslation.isImageOnlyLanguage(sourceLanguageCode)) "auto" else sourceLanguageCode,
+            sourceLanguageCode = ImageTranslation.ocrLanguage(sourceLanguageCode),
         )
 
         if (epoch != captureEpoch) {
@@ -666,7 +660,7 @@ class TargetHandleViewModel(
     /** 대상 찾기의 입력. [visionResult] 가 null 이면 OCR 이 아직 돌고 있다. */
     private class LookupInput(
         val position: Point,
-        val visionResult: com.galaxy.airviewdictionary.data.local.vision.model.Transaction?,
+        val visionResult: VisionResult?,
     )
 
     /**
@@ -749,7 +743,7 @@ class TargetHandleViewModel(
 
     /** 포인터 자리의 문단을 아직 읽지 않았나 — 읽는 동안 대상 찾기가 기다린다. SELECT 는 문단을 읽지 않는다. */
     private fun needsReading(
-        visionResult: com.galaxy.airviewdictionary.data.local.vision.model.Transaction,
+        visionResult: VisionResult,
         pointerPosition: Point,
     ): Boolean {
         if (textDetectMode == TextDetectMode.SELECT) return false
@@ -760,7 +754,7 @@ class TargetHandleViewModel(
     }
 
     private suspend fun getPointerPositionedVisionText(
-        visionResult: com.galaxy.airviewdictionary.data.local.vision.model.Transaction,
+        visionResult: VisionResult,
         pointerPosition: Point,
         textDetectMode: TextDetectMode,
     ): VisionText? {
@@ -811,7 +805,7 @@ class TargetHandleViewModel(
      * 번역할 단어·문장·문단은 모델이 잘라 보낸 이미지의 표시를 보고 고른다. 대상의 상자가 자를 높이이자 하이라이트다.
      */
     private fun imageTarget(
-        visionResult: com.galaxy.airviewdictionary.data.local.vision.model.Transaction,
+        visionResult: VisionResult,
         image: ImageTargets,
         pointerPosition: Point,
         textDetectMode: TextDetectMode,
@@ -846,7 +840,7 @@ class TargetHandleViewModel(
      * 뒤 읽기다 — 그사이 포인터가 다른 문단을 가리키면 그 문단 읽기에 양보하고, 읽지 못한 이웃은 문맥에서 빠진다.
      */
     private suspend fun readNeighbours(
-        transaction: com.galaxy.airviewdictionary.data.local.vision.model.Transaction,
+        transaction: VisionResult,
         target: com.galaxy.airviewdictionary.data.local.vision.model.VisionText,
     ) {
         val paragraphs = transaction.paragraphs
@@ -859,7 +853,7 @@ class TargetHandleViewModel(
 
     /** 문단의 글을 채운다. 읽기에 실패하면 대상이 없는 것으로 본다 — 흐름을 끊지 않는다. */
     private suspend fun readParagraph(
-        visionResult: com.galaxy.airviewdictionary.data.local.vision.model.Transaction,
+        visionResult: VisionResult,
         paragraph: Paragraph,
         background: Boolean = false,
     ): Paragraph? = try {
@@ -949,11 +943,6 @@ class TargetHandleViewModel(
                             val kitSourceLanguageCode = TranslationSourceLanguage.forKit(translationKitType, sourceLanguagePref, sourceLanguageCode)
                             Timber.tag(TAG).d("sourceLanguageCode $sourceLanguageCode -> kit $kitSourceLanguageCode (pref $sourceLanguagePref)")
 
-                            // TTS 목소리 목록 등이 참조하는 "마지막 번역의 실제 소스 언어"를 기록
-                            sourceLanguageCode.takeIf { it.isNotBlank() && it != "auto" && it != "und" }?.let {
-                                preferenceRepository.update(PreferenceRepository.LAST_USED_SOURCE_LANGUAGE_CODE, it)
-                            }
-
                             val motionEventState = motionEventFlow.first()
                             Timber.tag(TAG).d("motionEventState $motionEventState")
                             if (motionEventState == MotionEvent.ACTION_DOWN || motionEventState == MotionEvent.ACTION_MOVE) {
@@ -1037,13 +1026,9 @@ class TargetHandleViewModel(
                                             requestedSourceLanguageCode = sourceLanguagePref,
                                             ocrSourceLanguageCode = sourceLanguageCode,
                                         )
-                                        // 이미지 번역은 원문 언어를 모델이 판정했다 — TTS 목소리 등이 참조하는 마지막 원문 언어로 남긴다
-                                        if (image) transaction.resolvedSourceLanguageCode?.let {
-                                            preferenceRepository.update(PreferenceRepository.LAST_USED_SOURCE_LANGUAGE_CODE, it)
-                                        }
-                                        // 번역 한 건에 한 번 센다 — 손을 뗀 뒤 도착해 창이 뜨지 않아도 번역은 한 것이다.
+                                        // 번역 한 건에 한 번 기록한다 — 손을 뗀 뒤 도착해 창이 뜨지 않아도 번역은 한 것이다.
                                         // 번역창 컴포저블에서 세면 다시 그릴 때마다 중복될 수 있다.
-                                        analyticsRepository.translationReport(transaction, textDetectMode)
+                                        recordTranslation(transaction, textDetectMode)
 
                                         // 이미지 번역은 대상이 줄·문단이다 — 모델이 함께 돌려준 줄·문단 글로 번역한 단어·문장 자리를 어림해 하이라이트를 좁힌다
                                         val anchor = if (image) {
@@ -1079,7 +1064,7 @@ class TargetHandleViewModel(
      * 표시를 그린다. 영역 선택은 영역을 그대로 자른다.
      */
     private suspend fun requestImageTranslation(
-        visionResult: com.galaxy.airviewdictionary.data.local.vision.model.Transaction,
+        visionResult: VisionResult,
         target: VisionText,
         pointer: Point?,
         sourceLanguageCode: String,
@@ -1211,19 +1196,12 @@ class TargetHandleViewModel(
         kitResult: Transaction,
         requestedSourceLanguageCode: String,
         ocrSourceLanguageCode: String?,
-    ): Transaction = Transaction(
-        targetId = target.id,
+    ): Transaction = kitResult.confirmed(
         requestedSourceLanguageCode = requestedSourceLanguageCode,
-        // 킷이 판정했으면 그 값을, 아니면 OCR 판정값을 쓴다.
-        // "auto"/"und" 는 언어가 아니므로 판정 못 한 것으로 본다 — 고정 영역과 같은 규칙이다(TranslationSourceLanguage).
-        resolvedSourceLanguageCode = TranslationSourceLanguage.resolved(kitResult.resolvedSourceLanguageCode, ocrSourceLanguageCode),
-        targetLanguageCode = kitResult.targetLanguageCode,
+        ocrSourceLanguageCode = ocrSourceLanguageCode,
         // 킷이 원문을 못 돌려줬으면 OCR 값으로 대신한다.
-        sourceText = kitResult.sourceText?.takeIf { it.isNotBlank() }
-            ?: target.visionText.representation,
-        translationKitType = kitResult.translationKitType,
-        resultText = kitResult.resultText,
-        modelName = kitResult.modelName,
+        fallbackSourceText = target.visionText.representation,
+        targetId = target.id,
     )
 
 
@@ -1414,8 +1392,31 @@ class TargetHandleViewModel(
     //                                                                                            //
     ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    fun increaseTrialCount(): Int {
-        return secureRepository.increaseTrialCount()
+    /**
+     * 확정한 번역의 원문 언어를 "마지막 번역의 실제 원문 언어"로 남긴다 — TTS 목소리 목록이 참조한다. 번역에 성공한 뒤 확정 값(정규화됨)만 남긴다
+     * (코드 정리 A8 — 글 번역은 요청 전에 OCR 판정 값을, 이미지 번역은 성공 뒤 확정 값을 남겨 목록 언어와 읽는 언어가 어긋날 수 있었다).
+     */
+    private fun rememberSourceLanguage(transaction: Transaction) {
+        transaction.resolvedSourceLanguageCode?.let { preferenceRepository.update(PreferenceRepository.LAST_USED_SOURCE_LANGUAGE_CODE, it) }
+    }
+
+    /** 성공한 번역 한 건을 기록한다 — 원문 언어를 남기고([rememberSourceLanguage]) 애널리틱스에 보고한다. 포인터 모드와 고정 영역이 같이 쓴다(코드 정리 B2). */
+    fun recordTranslation(transaction: Transaction, textDetectMode: TextDetectMode) {
+        rememberSourceLanguage(transaction)
+        analyticsRepository.translationReport(transaction, textDetectMode)
+    }
+
+    /**
+     * 번역 한 건을 센다 — 시도 횟수를 올리고 100 · 200 · 300 · 500 회와 1000 회마다 걸린 기간을 보고한다(앱 리뷰 유도 · 사용량 통계).
+     * 포인터 모드와 고정 영역이 같이 쓴다(코드 정리 A3 — 고정 영역은 횟수만 올리고 보고를 빠뜨렸다).
+     */
+    fun countTrial() {
+        val trialCount = secureRepository.increaseTrialCount()
+        if (trialCount == 100 || trialCount == 200 || trialCount == 300 || trialCount == 500) {
+            analyticsRepository.hoursTakenReport(trialCount, UsageInfo.elapsedHoursSinceFirstUse(applicationContext))
+        } else if (trialCount % 1000 == 0) {
+            analyticsRepository.daysTakenReport(trialCount, UsageInfo.elapsedDaysSinceFirstUse(applicationContext))
+        }
     }
 
     private fun collectAdGateInfo() {
@@ -1439,21 +1440,7 @@ class TargetHandleViewModel(
                 .filterNotNull()
                 .filter { translation -> translation.resultText != null }
                 .distinctUntilChanged { old, new -> old.sourceText == new.sourceText }
-                .collect {
-                    val trialCount = increaseTrialCount()
-                    if (
-                        trialCount == 100
-                        || trialCount == 200
-                        || trialCount == 300
-                        || trialCount == 500
-                    ) {
-                        val hoursTaken = UsageInfo.elapsedHoursSinceFirstUse(applicationContext)
-                        analyticsRepository.hoursTakenReport(trialCount, hoursTaken)
-                    } else if (trialCount % 1000 == 0) {
-                        val daysTaken = UsageInfo.elapsedDaysSinceFirstUse(applicationContext)
-                        analyticsRepository.daysTakenReport(trialCount, daysTaken)
-                    }
-                }
+                .collect { countTrial() }
         }
 
         /**
@@ -1469,7 +1456,7 @@ class TargetHandleViewModel(
                 .filter { translation -> translation.resultText != null }
                 .distinctUntilChanged { old, new -> old.sourceText == new.sourceText }
                 .collect {
-                    if (!AdGateState.isUsable() && !SettingsActivity.liveStateFlow.value && !AdGateActivity.liveStateFlow.value) {
+                    if (adGateDue()) {
                         // 일정 시간 후가 아니라, 핸들에서 손가락을 떼어(ACTION_UP) 번역이 종료된 시점에 광고 게이트를 연다.
                         // (결과 수신 전에 이미 손을 뗀 상태라면 즉시 연다)
                         motionEventFlow.first { motionEvent ->
@@ -1482,6 +1469,13 @@ class TargetHandleViewModel(
                 }
         }
     }
+
+    /**
+     * 광고 게이트를 열 때인가 — 사용권이 없고(광고 시청 · 5분 사용권 · 쿨다운이 아님), 설정 화면이나 게이트가 떠 있지 않다.
+     * 포인터 모드와 고정 영역이 같은 판정을 쓴다(코드 정리 A2 — 고정 영역은 설정 화면 위에서도 게이트를 열었다).
+     */
+    fun adGateDue(): Boolean =
+        !AdGateState.isUsable() && !SettingsActivity.liveStateFlow.value && !AdGateActivity.liveStateFlow.value
 
     fun showAdGate() {
         // 리워드 광고 표시를 위해 투명 광고 게이트 액티비티를 연다.

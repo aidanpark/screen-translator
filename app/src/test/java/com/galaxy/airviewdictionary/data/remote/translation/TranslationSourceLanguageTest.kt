@@ -1,6 +1,5 @@
-package com.galaxy.airviewdictionary.ui.screen.overlay.targethandle
+package com.galaxy.airviewdictionary.data.remote.translation
 
-import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test

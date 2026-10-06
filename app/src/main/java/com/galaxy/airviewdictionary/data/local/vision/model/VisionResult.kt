@@ -6,7 +6,7 @@ import com.galaxy.airviewdictionary.data.local.vision.UnreadParagraphs
 import com.galaxy.airviewdictionary.data.local.vision.WritingDirection
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrText
 
-data class Transaction(
+data class VisionResult(
     val bitmap: Bitmap,
     /** 엔진이 준 인식 결과 날것. 선택 모드와 고정 영역이 화면 전체 글·덩어리 상자를 쓴다. */
     val ocr: OcrText,
@@ -49,7 +49,7 @@ data class Transaction(
 /** AI 이미지 번역(§25)의 대상 찾기. 글을 읽지 않으므로 단어 위치는 모른다 — 번역할 단어·문장·문단은 모델이 표시를 보고 고른다. */
 sealed interface ImageTargets {
 
-    /** PP-OCRv5 검출기 줄 — 단어 모드는 포인터 아래 줄, 문장·문단 모드는 그 문단. [Transaction.paragraphs] 는 줄 상자를 묶은 것이다(글 없음). */
+    /** PP-OCRv5 검출기 줄 — 단어 모드는 포인터 아래 줄, 문장·문단 모드는 그 문단. [VisionResult.paragraphs] 는 줄 상자를 묶은 것이다(글 없음). */
     data object Detected : ImageTargets
 
     /** 모델 팩(PP-OCRv5)이 아직 없다 — 포인터 위아래 고정 높이의 띠. */

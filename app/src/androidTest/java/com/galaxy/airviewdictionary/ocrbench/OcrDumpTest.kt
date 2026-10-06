@@ -1,5 +1,6 @@
 package com.galaxy.airviewdictionary.ocrbench
 
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.test.platform.app.InstrumentationRegistry
@@ -87,7 +88,7 @@ class OcrDumpTest {
         code: String,
     ): List<Word> {
         val direction = Language.writingDirection(code, false)
-        return repository.ocrLinesToWords(bitmap, lines, direction)
+        return ParagraphAssembler.ocrLinesToWords(bitmap, lines, direction)
     }
 
     /**
@@ -136,7 +137,7 @@ class OcrDumpTest {
         }
 
         return JSONObject()
-            .put("detectedVertical", repository.detectVerticalWriting(text))
+            .put("detectedVertical", ParagraphAssembler.detectVerticalWriting(text))
             .put("mlkitLines", mlkitLines)
             .put("direction", ttb.name)
             .put("width", bitmap.width)

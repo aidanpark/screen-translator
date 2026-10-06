@@ -15,7 +15,7 @@
         <key>service_available</key>
         <value>
             {
-                "default": false
+                "default": true
             }
         </value>
     </entry>
@@ -109,8 +109,9 @@
 
         paddle_ocr_enabled
             false 면 PP-OCRv5 를 쓰지 않고 지정 언어·auto 모두 ML Kit 으로 읽는다. 아랍·동슬라브 키릴·태국 문자는
-            ML Kit 라틴 인식기가 읽게 되어 알아볼 수 없는 글자가 나온다. 이미지 번역 경로가 없어졌으므로 Claude 사용자도
-            마찬가지다 — 끄면 이 문자권 번역이 사실상 멈추니, PP-OCRv5 로 인한 크래시·심한 지연처럼 더 큰 문제일 때만 끈다.
+            ML Kit 라틴 인식기가 읽게 되어 알아볼 수 없는 글자가 나온다. Claude 이미지 번역(§25)은 읽을 엔진이 없는 언어만
+            보내므로 이 문자권의 Claude 사용자도 마찬가지다 — 끄면 이 문자권 번역이 사실상 멈추니, PP-OCRv5 로 인한
+            크래시·심한 지연처럼 더 큰 문제일 때만 끈다. 끄면 auto 의 지원되지 않는 문자권 관문(성능 P7)도 돌지 않는다.
         paddle_ocr_auto_enabled
             false 면 auto 에서 PP-OCRv5 표본을 돌리지 않는다(언어를 지정한 경우는 계속 쓴다).
             auto 는 모든 화면에서 표본을 돌리므로, 지연·발열·크래시가 auto 에서 보이면 이것부터 끈다.

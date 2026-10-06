@@ -1,5 +1,6 @@
 package com.galaxy.airviewdictionary.ocrbench
 
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.test.platform.app.InstrumentationRegistry
@@ -53,7 +54,7 @@ class RealPageTest {
                     fun blockOf(l: Line) = blocks.firstOrNull {
                         it.second.contains(l.boundingBox.centerX(), l.boundingBox.centerY())
                     }?.first ?: -1
-                    val ps = repository.groupLinesIntoParagraphs(ls, d, params)
+                    val ps = ParagraphAssembler.groupLinesIntoParagraphs(ls, d, params)
                     var g = 0; var e = 0; var c = 0
                     for ((id, _) in blocks) {
                         val own = ls.filter { blockOf(it) == id }

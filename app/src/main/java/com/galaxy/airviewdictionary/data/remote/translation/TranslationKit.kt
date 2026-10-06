@@ -26,9 +26,7 @@ abstract class TranslationKit {
     abstract fun isLanguageSwappable(sourceLanguageCode: String, targetLanguageCode: String): Boolean
 
     /**
-     * Request translation.
-     * This function would block current thread and coroutine cannot be properly suspended.
-     * Therefore, it must be used within 'viewModelScope.launch' syntax.
+     * 번역을 요청한다. 응답을 기다리는 동안 일시 중단(suspend)할 뿐 스레드를 막지 않는다 — 코루틴 안에서 부른다.
      *
      * [TranslationResponse] Translation response object
      */

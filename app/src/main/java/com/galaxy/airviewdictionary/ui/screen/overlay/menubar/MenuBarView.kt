@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.galaxy.airviewdictionary.data.local.preference.PreferenceRepository
 import com.galaxy.airviewdictionary.R
 import com.galaxy.airviewdictionary.core.OverlayService
 import com.galaxy.airviewdictionary.data.local.screen.ScreenInfo
@@ -232,7 +233,7 @@ class MenuBarView private constructor() : OverlayView() {
             // Menu bar transparency
             val menuBarTransparency by viewModel.preferenceRepository.menuBarTransparencyFlow.collectAsStateWithLifecycle(
                 lifecycle = lifecycleOwner.lifecycle,
-                initialValue = 1.0f
+                initialValue = PreferenceRepository.DEFAULT_TRANSPARENCY
             )
 
             val menuBarConfig by viewModel.preferenceRepository.menuBarConfigFlow.collectAsStateWithLifecycle(

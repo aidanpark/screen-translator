@@ -16,7 +16,6 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.galaxy.airviewdictionary.data.local.vision.VisionRepository
 import com.galaxy.airviewdictionary.data.local.vision.kit.paddle.PaddleKits
 import com.galaxy.airviewdictionary.data.local.vision.kit.paddle.PaddleModelFiles
-import com.galaxy.airviewdictionary.data.local.vision.kit.paddle.PaddleSessions
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrLine
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
@@ -95,27 +94,6 @@ class PaddleMemoryTest {
             System.gc(); val after = native()
             Log.i("PaddleMemory", "아레나 ${if (arenaOn) "켬" else "끔"}: 적재 +${mb(loaded - before)}, 실행 뒤 +${mb(after - before)}, 검출 ${detMs}ms, 인식(4줄×3모델) ${recMs}ms")
             detS.close(); recS.forEach { it.close() }
-        }
-    }
-
-    /** 앱과 같은 경로(auto 표본, 문단 읽기)로 아레나 켬·끔의 지연과 메모리. 각 3회 중앙값. */
-    @Test
-    fun arenaOnAppPath() {
-        runBlocking {
-            val arabic = screen("القاهرة هي عاصمة جمهورية مصر العربية وأكبر مدنها، وتقع على ضفاف نهر النيل في شمال البلاد، وهي من أكبر المدن في أفريقيا والشرق الأوسط.")
-            for (on in listOf(true, false)) {
-                PaddleSessions.arena = on
-                System.gc(); val before = native()
-                val kits = PaddleKits(PaddleModelFiles(context))
-                val kit = kits.kitFor("ar")!!
-                kits.autoCandidates(arabic) // 적재·예열
-                val auto = List(3) { val t = System.nanoTime(); kits.autoCandidates(arabic); (System.nanoTime() - t) / 1_000_000 }.sorted()[1]
-                val lines = kit.detect(arabic).lines.take(8)
-                val read = List(3) { val t = System.nanoTime(); kit.recognize(arabic, lines); (System.nanoTime() - t) / 1_000_000 }.sorted()[1]
-                System.gc(); val after = native()
-                Log.i("PaddleMemory", "앱 경로, 아레나 ${if (on) "켬" else "끔"}: auto 표본 ${auto}ms, 8줄 읽기 ${read}ms, 네이티브 +${mb(after - before)}")
-            }
-            PaddleSessions.arena = false
         }
     }
 

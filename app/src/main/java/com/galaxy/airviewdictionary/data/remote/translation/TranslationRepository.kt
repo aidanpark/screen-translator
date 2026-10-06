@@ -14,12 +14,21 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.os.SystemClock
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import java.io.IOException
+import timber.log.Timber
+import java.util.concurrent.ConcurrentHashMap
 
 
 /**
- * 번역 저장소.
+ * 번역 저장소 — 엔진([TranslationKitType])별 킷으로 보낸다.
  * - GOOGLE: 무료 Google 웹 번역
- * - DEEPL: 사용자의 개인 API 키로 동작하는 DeepL
+ * - DEEPL · OPENAI · GEMINI · CLAUDE: 사용자의 개인 API 키로 동작한다. CLAUDE 는 화면 이미지 번역도 한다(§25)
  */
 @Singleton
 class TranslationRepository @Inject constructor(
@@ -28,7 +37,40 @@ class TranslationRepository @Inject constructor(
     private val openAiKit: OpenAiKit,
     private val geminiKit: GeminiKit,
     private val claudeKit: ClaudeKit,
+    private val okHttpClient: OkHttpClient,
 ) : AVDRepository() {
+
+    /** 엔진마다 마지막으로 연결을 미리 맺은 때(elapsedRealtime). */
+    private val lastWarmAt = ConcurrentHashMap<TranslationKitType, Long>()
+
+    /**
+     * 고른 AI 엔진 서버와 연결을 미리 맺는다 — 핸들을 잡는 순간 부르면 캡처 · 인식(0.2~0.4초) 동안 TLS 연결이 맺어지고, 번역 요청이 같은 클라이언트의
+     * 연결 풀에서 그 연결을 다시 쓴다. 엔진마다 첫 요청이 0.6~0.8초 느렸다(2026-10-06 S26 실측). 본문 없는 HEAD 라 키 · 토큰 · 사용자 글이 나가지 않는다.
+     * 키가 있는 공식 API 엔진(Claude · Gemini · OpenAI)만 — Google 은 웹 번역 주소라, DeepL 은 자체 SDK 의 연결을 써서 하지 않는다.
+     * 같은 엔진은 [WARM_INTERVAL_MILLIS] 안에 다시 하지 않는다(연결은 몇 분 살아 있다).
+     */
+    fun warmUp(kitType: TranslationKitType) {
+        val (baseUrl, activated) = when (kitType) {
+            TranslationKitType.CLAUDE -> ClaudeKit.BASE_URL to ClaudeKit.keyActivatedStateFlow.value
+            TranslationKitType.GEMINI -> GeminiKit.BASE_URL to GeminiKit.keyActivatedStateFlow.value
+            TranslationKitType.OPENAI -> OpenAiKit.BASE_URL to OpenAiKit.keyActivatedStateFlow.value
+            else -> return
+        }
+        if (!activated) return
+        val now = SystemClock.elapsedRealtime()
+        val last = lastWarmAt[kitType]
+        if (last != null && now - last < WARM_INTERVAL_MILLIS) return
+        lastWarmAt[kitType] = now
+        okHttpClient.newCall(Request.Builder().url(baseUrl).head().build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                Timber.tag("TranslationRepository").d("warm-up $kitType 실패: ${e.message}")
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.close()
+            }
+        })
+    }
 
     // 라틴 문자를 사용하는 언어 코드 리스트. 이 로케일 사용자에게는 표시명 하단 정렬을 건너뛴다.
     private val latinLanguages = setOf("en", "es", "fr", "de", "pt", "it", "ro", "nl", "sv", "no", "da", "fi", "pl", "cs", "hu", "sk", "sl")
@@ -188,5 +230,10 @@ class TranslationRepository @Inject constructor(
     ): TranslationResponse = claudeKit.requestImage(sourceLanguageCode, targetLanguageCode, image, mode)
 
     override fun onZeroReferences() {
+    }
+
+    private companion object {
+        /** 같은 엔진의 연결을 다시 미리 맺지 않는 간격. */
+        const val WARM_INTERVAL_MILLIS = 60_000L
     }
 }

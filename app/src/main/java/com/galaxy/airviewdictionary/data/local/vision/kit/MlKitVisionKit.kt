@@ -86,7 +86,7 @@ class MlKitVisionKit(val type: TextRecognizerType) : VisionKit {
                 }
         }
 
-    // 필요한 경우 추가 기능을 클래스에 추가할 수 있습니다.
+    /** 인식기를 닫는다 — 앱은 수명 관찰자([addObserver])로 닫고, 이 함수는 비용 측정 시험(`MlKitCostTest`)만 쓴다. */
     fun closeRecognizer() {
         recognizer.close()
     }

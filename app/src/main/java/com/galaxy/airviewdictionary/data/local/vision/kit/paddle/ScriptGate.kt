@@ -57,17 +57,6 @@ object ScriptGate {
             .take(VOTE)
     }
 
-    /**
-     * 화면 픽셀(ARGB, 행 우선 [width] × [height])에서 줄 [box] 하나를 판별기 입력([H] × [W], 표준화된 값)으로 만든다.
-     */
-    fun lineInput(pixels: IntArray, width: Int, height: Int, box: IntArray): FloatArray {
-        val c = cropRect(box, width, height)
-        val cw = c[2] - c[0]; val ch = c[3] - c[1]
-        val crop = IntArray(cw * ch)
-        for (y in 0 until ch) System.arraycopy(pixels, (c[1] + y) * width + c[0], crop, y * cw, cw)
-        return cropInput(crop, cw, ch)
-    }
-
     /** 줄 상자를 줄 높이의 15% 만큼 넓혀 화면 안으로 자른 사각형 `[x0, y0, x1, y1]`(폭 · 높이 ≥ 1). */
     fun cropRect(box: IntArray, width: Int, height: Int): IntArray {
         val m = ((box[3] - box[1]) * 0.15).toInt()

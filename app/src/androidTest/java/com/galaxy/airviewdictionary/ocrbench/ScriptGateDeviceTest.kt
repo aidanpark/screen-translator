@@ -155,37 +155,4 @@ class ScriptGateDeviceTest {
         fun med(x: List<Long>) = x.sorted()[x.size / 2]
         File(appContext.externalMediaDirs.first(), "gate_split.txt").writeText("A ${med(a)}ms  B ${med(b)}ms  C ${med(c)}ms (화면 ${a.size})\n")
     }
-    /**
-     * 관문 추론의 스레드 수와 대기 회전(ONNX Runtime 의 spinning)을 견준다 — 판정은 바뀌지 않고 다른 인식기와의 CPU 다툼만 바뀐다(성능 P7 §7.6).
-     * 화면(`files/cfg_png`)마다 조건 여섯(관문 끔 · 4스레드 회전 켬/끔 · 2스레드 회전 켬/끔 · 1스레드)을 한 프로세스에서 순서를 돌려 가며 5회씩
-     * `request(auto)` 를 재어 중앙값을 쓴다(조건마다 예열 1회). 결과: 외부 미디어 `gate_cfg.tsv`.
-     */
-    @Test
-    fun compareGateConfigs() = runBlocking {
-        data class Cfg(val name: String, val on: Boolean, val threads: Int, val spinning: Boolean)
-        val cfgs = listOf(Cfg("off", false, 4, true), Cfg("t4s1", true, 4, true), Cfg("t4s0", true, 4, false),
-            Cfg("t2s1", true, 2, true), Cfg("t2s0", true, 2, false), Cfg("t1", true, 1, false))
-        fun apply(c: Cfg) { ScriptGate.enabled = c.on; PaddleKits.gateThreads = c.threads; PaddleKits.gateSpinning = c.spinning }
-        val repository = VisionRepository(appContext)
-        val out = StringBuilder("screen\t" + cfgs.joinToString("\t") { it.name } + "\tgate\n")
-        for (file in File(appContext.filesDir, "cfg_png").listFiles { f -> f.name.endsWith(".png") }!!.sortedBy { it.name }) {
-            val image = BitmapFactory.decodeFile(file.path) ?: continue
-            for (c in cfgs) { apply(c); repository.request(image, "auto") }
-            val times = cfgs.associateWith { ArrayList<Long>() }
-            repeat(5) { r ->
-                for (k in cfgs.indices) {
-                    val c = cfgs[(k + r) % cfgs.size]
-                    apply(c)
-                    val t = System.nanoTime(); repository.request(image, "auto"); times.getValue(c) += (System.nanoTime() - t) / 1_000_000
-                }
-            }
-            apply(cfgs[1])
-            val gated = (repository.request(image, "auto") as? VisionResponse.Success)?.result?.unsupportedScript?.script
-            out.append(file.name.removeSuffix(".png")).append('\t')
-                .append(cfgs.joinToString("\t") { c -> times.getValue(c).sorted()[2].toString() }).append('\t').append(gated ?: "-").append('\n')
-            image.recycle()
-        }
-        apply(cfgs[1])
-        File(appContext.externalMediaDirs.first(), "gate_cfg.tsv").writeText(out.toString())
-    }
 }

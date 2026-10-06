@@ -82,8 +82,9 @@ enum class TranslationDomain(val labelResourceId: Int, val promptClause: String?
  * AI 번역 엔진들이 공유하는 시스템 프롬프트. 번역할 것은 화면에서 OCR 로 읽은 글이다(단어·문장·문단, 영역 선택은 여러 줄).
  *
  * 원문 언어를 모르면([sourceLanguageName] = null, auto) 원문 언어를 적지 않고 번역만 청한다. 따로 판정을 청하던 문구("Detect the source
- * language")는 뺐다 — 모델은 글을 읽으며 언어를 알고, 판정한 언어를 돌려받는 곳도 없다(돌려받던 것은 걷어낸 이미지 경로뿐이었다,
- * `.docs/vision-engine-design.md` §24.13). auto 에 ML Kit 식별값을 원문으로 박지 않는 이유는 `TranslationSourceLanguage.forKit` 참고.
+ * language")는 뺐다 — 모델은 글을 읽으며 언어를 알고, 글 번역에는 판정한 언어를 돌려받는 곳이 없다(§24.13). 판정 언어를 돌려받는 것은
+ * Claude 이미지 번역뿐이고, 그 프롬프트는 [ImageTranslation.systemPrompt] 가 따로 만든다(§25). auto 에 ML Kit 식별값을 원문으로 넣지 않는
+ * 이유는 `TranslationSourceLanguage.forKit` 참고.
  *
  * 출력 형식 제약을 스타일 지시보다 **먼저** 둔다. 순서가 뒤바뀌면 분야/강도 문구가
  * "번역문만 출력" 규칙을 흔들어 설명문이 섞여 나온다.

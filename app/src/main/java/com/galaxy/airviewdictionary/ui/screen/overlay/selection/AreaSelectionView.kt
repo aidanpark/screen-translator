@@ -2,7 +2,6 @@ package com.galaxy.airviewdictionary.ui.screen.overlay.selection
 
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import androidx.core.graphics.createBitmap
@@ -34,8 +33,6 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.galaxy.airviewdictionary.R
 import com.galaxy.airviewdictionary.core.OverlayService
-import com.galaxy.airviewdictionary.data.local.capture.CapturePreventedException
-import com.galaxy.airviewdictionary.data.local.capture.NoMediaProjectionTokenException
 import com.galaxy.airviewdictionary.data.local.vision.TextDetectMode
 import com.galaxy.airviewdictionary.data.local.vision.WritingDirection
 import com.galaxy.airviewdictionary.extensions.setFromPoints
@@ -43,7 +40,7 @@ import com.galaxy.airviewdictionary.extensions.vibrate
 import com.galaxy.airviewdictionary.data.remote.translation.Language
 import com.galaxy.airviewdictionary.data.local.capture.CaptureResponse
 import com.galaxy.airviewdictionary.data.local.vision.model.ImageTargets
-import com.galaxy.airviewdictionary.data.local.vision.model.Transaction
+import com.galaxy.airviewdictionary.data.local.vision.model.VisionResult
 import com.galaxy.airviewdictionary.data.local.vision.model.VisionResponse
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrText
 import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
@@ -53,7 +50,6 @@ import com.galaxy.airviewdictionary.ui.screen.overlay.targethandle.TargetHandleV
 import com.galaxy.airviewdictionary.ui.screen.overlay.targethandle.TranslateStatus
 import com.galaxy.airviewdictionary.ui.screen.overlay.translation.TranslationErrorView
 import com.galaxy.airviewdictionary.ui.screen.overlay.translation.TranslationView
-import com.galaxy.airviewdictionary.ui.screen.permissions.ScreenCapturePermissionRequesterActivity
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -346,16 +342,7 @@ open class AreaSelectionView : OverlayView() {
             Timber.tag(TAG).d("captureResponse $captureResponse")
             if (captureResponse !is CaptureResponse.Success) {
                 Timber.tag(TAG).d("CaptureResponse.Error ${(captureResponse as CaptureResponse.Error).t}")
-                if (captureResponse.t is NoMediaProjectionTokenException) {
-                    // 화면 캡처 권한을 요청
-                    val intent = Intent(context, ScreenCapturePermissionRequesterActivity::class.java)
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(intent)
-                    clear()
-                } else if (captureResponse.t is CapturePreventedException) {
-                    // 캡처 방지 알림
-                    // captureResponse.t.checkerBitmap 처리
-                }
+                if (targetHandleViewModel.requestCapturePermissionIfNeeded(captureResponse.t)) clear()
                 return@launchInOverlayViewCoroutineScope
             }
 
@@ -363,7 +350,7 @@ open class AreaSelectionView : OverlayView() {
             val translationKitType: TranslationKitType = targetHandleViewModel.preferenceRepository.translationKitTypeFlow.first()
             if (targetHandleViewModel.translationRepository.usesImageTranslation(translationKitType, sourceLanguageCode)) {
                 // AI 이미지 번역 — 읽지 않고 영역을 그대로 보낸다(§25)
-                targetHandleViewModel.visionResultFlow.value = Transaction(
+                targetHandleViewModel.visionResultFlow.value = VisionResult(
                     captureResponse.bitmap, OcrText("", emptyList()), sourceLanguageCode, emptyList(), image = ImageTargets.Area(Rect(selectedArea)),
                 )
                 return@launchInOverlayViewCoroutineScope
@@ -376,8 +363,7 @@ open class AreaSelectionView : OverlayView() {
 
             val visionResponse: VisionResponse = targetHandleViewModel.visionRepository.request(
                 bitmap = selectedAreaBitmap,
-                // 읽을 엔진이 없는 언어인데 이미지 번역을 못 하면(원격 스위치를 껐다) auto 로 읽는다
-                sourceLanguageCode = if (ImageTranslation.isImageOnlyLanguage(sourceLanguageCode)) "auto" else sourceLanguageCode,
+                sourceLanguageCode = ImageTranslation.ocrLanguage(sourceLanguageCode),
                 // 영역 안의 글 전체가 필요하다 — 검출만 하고 멈추지 않는다.
                 readAll = true,
             )
@@ -391,7 +377,7 @@ open class AreaSelectionView : OverlayView() {
             // auto 의 지원되지 않는 문자권 관문(성능 P7)이 개입했다 — 읽지 못한 글 대신 영역 이미지를 대상으로 둔다.
             // Claude 이미지 번역을 쓸 수 있으면 영역을 보내고, 아니면 "읽을 수 없는 문자" 안내가 뜬다(TargetHandleViewModel)
             visionResponse.result.unsupportedScript?.let { verdict ->
-                targetHandleViewModel.visionResultFlow.value = Transaction(
+                targetHandleViewModel.visionResultFlow.value = VisionResult(
                     captureResponse.bitmap, OcrText("", emptyList()), visionResponse.result.detectedLanguageCode, emptyList(),
                     image = ImageTargets.Area(Rect(selectedArea)), unsupportedScript = verdict,
                 )

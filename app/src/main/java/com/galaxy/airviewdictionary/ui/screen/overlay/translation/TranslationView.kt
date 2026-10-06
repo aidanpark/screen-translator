@@ -76,6 +76,7 @@ import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.galaxy.airviewdictionary.data.local.preference.PreferenceRepository
 import com.galaxy.airviewdictionary.R
 import com.galaxy.airviewdictionary.core.OverlayService
 import com.galaxy.airviewdictionary.data.local.screen.ScreenInfo
@@ -253,7 +254,7 @@ open class TranslationView : OverlayView() {
             clear()
         }
 
-        // 표시용 원문. 모델이 읽은 경우에만 판정 언어 라벨이 앞에 붙는다(복사·TTS 에는 붙지 않는다).
+        // 표시용 원문. 원문 언어가 auto 이고 언어가 확정된 경우에만 판정 언어 라벨이 앞에 붙는다(복사·TTS 에는 붙지 않는다).
         val sourceText = translation.detectedLanguageLabel + translation.sourceText
 
         // 폰트 사이즈
@@ -551,7 +552,7 @@ open class TranslationView : OverlayView() {
         // Window transparency
         val translationTransparency by targetHandleViewModel.preferenceRepository.translationTransparencyFlow.collectAsStateWithLifecycle(
             lifecycle = lifecycleOwner.lifecycle,
-            initialValue = 1.0f
+            initialValue = PreferenceRepository.DEFAULT_TRANSPARENCY
         )
 
         val automaticTranslationPlayback by targetHandleViewModel.preferenceRepository.automaticTranslationPlaybackFlow.collectAsStateWithLifecycle(

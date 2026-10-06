@@ -56,18 +56,14 @@ class EvalSetting(val label: String, val values: Map<String, Double>) {
         "wordGap" -> copy(WORD_WRITE_DIRECTION_DISTANCE_FONT_HEIGHT_RATIO_LIMIT = value)
         "wordAxis" -> copy(WORD_AXIS_FONT_HEIGHT_SIMILARITY_MINIMUM_RATIO = value)
         "axis" -> copy(LINE_MEASURE_ALONG_WRITING_AXIS = value != 0.0)
-        "head" -> copy(LINE_HEADING_HEIGHT_RATIO = value)
-        "hwidth" -> copy(LINE_HEADING_WIDTH_RATIO = value)
-        "vmerge" -> copy(VERTICAL_COLUMN_MERGE = value != 0.0)
         "vpost" -> copy(VERTICAL_SPLIT = value != 0.0)
-        "colgap" -> copy(WORD_COLUMN_GAP_ROWS = value.toInt())
         else -> throw IllegalArgumentException("모르는 키 '$key'. 쓸 수 있는 것: $KEYS")
     }
 
     companion object {
         val KEYS = listOf(
             "indent", "guard", "fill", "affinity", "lineHeight", "overlap", "pitch",
-            "wordGap", "wordAxis", "axis", "head", "hwidth", "vmerge", "vpost", "colgap", "post",
+            "wordGap", "wordAxis", "axis", "vpost", "post",
         )
 
         /** 이 접두사가 붙은 키는 세로 부분에만 적용한다. */

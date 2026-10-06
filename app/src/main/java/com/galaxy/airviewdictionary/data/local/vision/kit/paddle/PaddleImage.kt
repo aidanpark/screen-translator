@@ -34,12 +34,17 @@ internal inline fun bgrTensor(
     return buffer
 }
 
+/**
+ * 픽셀(ARGB)의 밝기 0 ~ 255(Rec.601 가중치). 문자 판별기(`ScriptGate`)는 학습 때와 같아야 해 Pillow 의 회색조 공식을 따로 쓴다.
+ */
+private fun luminance(p: Int): Int = ((p shr 16 and 0xFF) * 299 + (p shr 8 and 0xFF) * 587 + (p and 0xFF) * 114) / 1000
+
 /** 열마다 가장 진한 픽셀의 진하기(바탕 0 ~ 글자 255). [dark] 바탕이면 밝은 것이 글자다. 넓은 줄의 자를 자리를 찾는 데 쓴다([LineChunks]). */
 internal fun columnInk(pixels: IntArray, width: Int, height: Int, dark: Boolean): IntArray = IntArray(width) { x ->
     var most = 0
     for (y in 0 until height) {
         val p = pixels[y * width + x]
-        val luminance = ((p shr 16 and 0xFF) * 299 + (p shr 8 and 0xFF) * 587 + (p and 0xFF) * 114) / 1000
+        val luminance = luminance(p)
         val ink = if (dark) luminance else 255 - luminance
         if (ink > most) most = ink
     }
@@ -81,7 +86,7 @@ internal fun Bitmap.isDark(): Boolean {
         var x = left
         while (x <= right) {
             val p = getPixel(x, y)
-            sum += ((p shr 16 and 0xFF) * 299 + (p shr 8 and 0xFF) * 587 + (p and 0xFF) * 114) / 1000
+            sum += luminance(p)
             count++
             x += step
         }

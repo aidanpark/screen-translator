@@ -1,6 +1,7 @@
 package com.galaxy.airviewdictionary.data.local.vision.kit.paddle
 
 import android.graphics.Bitmap
+import android.graphics.Rect
 import androidx.lifecycle.Lifecycle
 import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKit
 import com.galaxy.airviewdictionary.data.local.vision.ocr.OcrBlock
@@ -43,8 +44,7 @@ class PaddleOcrVisionKit internal constructor(
     override suspend fun detect(screen: Bitmap): OcrText = withContext(Dispatchers.Default) {
         // 검출한 줄은 이 엔진이 읽는다 — 인식기 세션까지 먼저 만든다. 못 만들면 검출 전에 실패해, 부르는 쪽이 이 화면을 ML Kit 으로 다시 검출한다
         check(detector.prepare() && recognizer.prepare()) { "$name 세션을 만들 수 없다" }
-        val boxes = detector.detect(screen)
-        OcrText("", boxes.map { box -> OcrBlock(box, listOf(OcrLine(box, "", null, null))) })
+        linesOf(detector.detect(screen))
     }
 
     /**
@@ -71,8 +71,11 @@ class PaddleOcrVisionKit internal constructor(
     /** 세션은 앱 수명 동안 둔다. 묶을 자원이 없다. */
     override fun addObserver(lifecycle: Lifecycle) = Unit
 
-    private companion object {
+    internal companion object {
+        /** 검출한 줄 상자를 읽지 않은 줄(`words == null`)로 — 줄마다 덩어리 하나(`OcrText` 계약 3). */
+        internal fun linesOf(boxes: List<Rect>): OcrText = OcrText("", boxes.map { box -> OcrBlock(box, listOf(OcrLine(box, "", null, null))) })
+
         @OptIn(ExperimentalCoroutinesApi::class)
-        val readers = Dispatchers.Default.limitedParallelism(4)
+        private val readers = Dispatchers.Default.limitedParallelism(4)
     }
 }

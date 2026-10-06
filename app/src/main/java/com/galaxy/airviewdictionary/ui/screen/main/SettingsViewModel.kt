@@ -3,6 +3,7 @@ package com.galaxy.airviewdictionary.ui.screen.main
 import android.app.Activity
 import androidx.compose.foundation.ScrollState
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.galaxy.airviewdictionary.data.local.preference.PreferenceRepository
 import com.galaxy.airviewdictionary.data.local.secure.SecureRepository
 import com.galaxy.airviewdictionary.data.local.tts.TTSReadTarget
@@ -14,6 +15,8 @@ import com.galaxy.airviewdictionary.data.remote.translation.TranslationRepositor
 import com.galaxy.airviewdictionary.ui.screen.overlay.menubar.MenuConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
 import javax.inject.Inject
@@ -31,6 +34,19 @@ class SettingsViewModel @Inject constructor(
     private val TAG = javaClass.simpleName
 
     val scrollState = ScrollState(initial = 0)
+
+    /**
+     * 엔진 키를 지운 뒤의 정리 — 고른 엔진이 [kitType] 이면 Google 로 되돌리고 엔진별 정리([extra])를 한다. 대화상자의 코루틴 범위는 대화상자가
+     * 닫히며 취소되므로 뷰모델 범위에서 한다(코드 리뷰 지적 — 키를 지우고 바로 닫으면 엔진 되돌리기와 원문 언어 정리가 빠질 수 있었다).
+     */
+    fun afterKeyRemoved(kitType: TranslationKitType, extra: suspend () -> Unit = {}) {
+        viewModelScope.launch {
+            if (preferenceRepository.translationKitTypeFlow.first() == kitType) {
+                preferenceRepository.update(PreferenceRepository.TRANSLATION_KIT_TYPE, TranslationKitType.GOOGLE.name)
+            }
+            extra()
+        }
+    }
 
     fun updateDragHandleDocking(dragHandleDocking: Boolean) {
         preferenceRepository.update(PreferenceRepository.DRAG_HANDLE_DOCKING, dragHandleDocking)

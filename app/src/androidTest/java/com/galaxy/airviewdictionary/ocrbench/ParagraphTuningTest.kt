@@ -1,5 +1,6 @@
 package com.galaxy.airviewdictionary.ocrbench
 
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.test.platform.app.InstrumentationRegistry
@@ -49,7 +50,7 @@ class ParagraphTuningTest {
     /** 본문 줄들이 한 문단에 몇 개나 함께 묶였는지. */
     private fun bodyLinesGrouped(repository: VisionRepository, lines: List<Line>, params: AssemblyParams): Pair<Int, Int> {
         val bodyLines = lines.filter { it.boundingBox.centerY() in bodyRange }
-        val paragraphs = repository.groupLinesIntoParagraphs(lines, WritingDirection.RTL, params)
+        val paragraphs = ParagraphAssembler.groupLinesIntoParagraphs(lines, WritingDirection.RTL, params)
         val best = paragraphs.maxOfOrNull { p ->
             p.lines.count { it.boundingBox.centerY() in bodyRange }
         } ?: 0
@@ -87,7 +88,7 @@ class ParagraphTuningTest {
 
         // 어느 줄이 어느 문단으로 갔는지 본다. 문턱값을 다 풀어도 안 바뀌었으니
         // 문턱이 아니라 다른 곳에서 갈린다.
-        val paragraphs = repository.groupLinesIntoParagraphs(lines, WritingDirection.RTL, params)
+        val paragraphs = ParagraphAssembler.groupLinesIntoParagraphs(lines, WritingDirection.RTL, params)
         lines.filter { it.boundingBox.centerY() in bodyRange }
             .sortedBy { it.boundingBox.top }
             .forEach { line ->

@@ -39,27 +39,25 @@ internal class PaddleSessions(private val files: PaddleModelFiles) {
     /**
      * 모델이 아직 없으면(팩을 받는 중), 스위치가 꺼져 있으면, 환경이나 세션을 만들 수 없으면 null. [keepArena] 는 CPU 아레나를 둘지 —
      * 큰 인식 모델은 끄지만(§20) 작은 문자 판별기는 켜 둔다(끄면 S26 에서 판별이 20ms 가량 느렸다, 성능 P7). [threads] 는 한 번의 추론이 쓰는 스레드 수다 —
-     * 검출은 한 장을 4스레드로, 인식은 줄 여럿을 동시에 2스레드씩 돌리는 편이 빠르다(실측 §12). [spinning] 이 false 면 추론 스레드가 일이 끝난 뒤
-     * 기다리며 CPU 를 돌지 않는다. [key] 는 세션을 기억하는 이름이다 — 같은 모델을 다른 설정으로 견주는 기기 시험만 바꾼다.
+     * 검출은 한 장을 4스레드로, 인식은 줄 여럿을 동시에 2스레드씩 돌리는 편이 빠르다(실측 §12).
      */
-    fun session(model: String, threads: Int, keepArena: Boolean = arena, spinning: Boolean = true, key: String = model): OrtSession? {
-        sessions[key]?.let { return it }
+    fun session(model: String, threads: Int, keepArena: Boolean = false): OrtSession? {
+        sessions[model]?.let { return it }
         synchronized(this) {
-            sessions[key]?.let { return it }
+            sessions[model]?.let { return it }
             if (broken(model)) return null
             val bytes = files.read(model) ?: return null
             val env = environment() ?: return null
             return try {
                 OrtSession.SessionOptions().use { options ->
                     options.setIntraOpNumThreads(threads)
-                    if (!spinning) options.addConfigEntry("session.intra_op.allow_spinning", "0")
                     // CPU 아레나는 추론 중 쓴 작업 메모리를 세션마다 최대치로 붙잡아 둔다 — 세션 넷이면 ~500MB 가 늘 차 있다(§20).
                     if (!keepArena) {
                         options.setCPUArenaAllocator(false)
                         options.setMemoryPatternOptimization(false)
                     }
                     env.createSession(bytes, options)
-                }.also { sessions[key] = it }
+                }.also { sessions[model] = it }
             } catch (t: Throwable) {
                 failed += model
                 Timber.tag(TAG).e(t, "PP-OCRv5 세션을 만들지 못했다: $model — 이 프로세스에서는 이 모델을 쓰지 않는다")
@@ -85,9 +83,5 @@ internal class PaddleSessions(private val files: PaddleModelFiles) {
 
     internal companion object {
         private const val TAG = "PaddleSessions"
-
-        /** CPU 아레나를 쓰는가(§20). 새 세션부터 적용된다 — 기기 비교 시험이 바꾼다. */
-        @Volatile
-        var arena = false
     }
 }

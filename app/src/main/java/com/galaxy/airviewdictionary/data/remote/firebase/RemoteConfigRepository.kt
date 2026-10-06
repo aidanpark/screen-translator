@@ -4,6 +4,7 @@ import android.content.Context
 import com.galaxy.airviewdictionary.R
 import com.galaxy.airviewdictionary.data.local.ads.AdGatePolicy
 import org.json.JSONObject
+import com.google.gson.JsonParser
 import com.google.firebase.Firebase
 import com.google.firebase.remoteconfig.ConfigUpdate
 import com.google.firebase.remoteconfig.ConfigUpdateListener
@@ -50,27 +51,59 @@ class RemoteConfigRepository @Inject constructor(@ApplicationContext val context
 
         // CLAUDE_IMAGE_ENABLED 를 끄면 Claude 도 OCR 글을 번역한다 — 화면 이미지를 보내지 않는다(§25).
         const val CLAUDE_IMAGE_ENABLED = "claude_image_enabled"
+
+        /**
+         * 끄기 스위치 하나(PP-OCRv5 §19 · Claude 이미지 §25). 값을 아직 못 받았으면(기본값도 설정 전이면 `VALUE_SOURCE_STATIC`) 켜진 것으로 본다 — 앱
+         * 시작 직후나 시험에서 꺼지면 안 된다. 주입 없이 부르는 곳(`PaddleSwitch`, `ImageTranslation.Switch`)이 같이 쓴다(코드 정리 B7).
+         */
+        fun switchOn(key: String): Boolean = runCatching {
+            val value = Firebase.remoteConfig.getValue(key)
+            value.source == FirebaseRemoteConfig.VALUE_SOURCE_STATIC || value.asBoolean()
+        }.getOrDefault(true)
+
+        /**
+         * [SERVICE_AVAILABLE_KEY] 의 값(`{"default": true, "KR": false}` 형식)에서 [country] 의 서비스 가능 여부. 값이 없거나 형식이 깨졌으면
+         * 열린 것으로 본다 — 막으려면 콘솔에 false 를 명시한다(앱 기본값 XML 도 true). Gson 으로 읽는다 — JVM 단위 시험에서도 돈다.
+         * 값이 문자열 "true" · "false"(대소문자 무시)여도 불리언으로 읽는다 — 예전 org.json 의 `getBoolean` · `optBoolean` 과 같다.
+         */
+        fun serviceAvailable(raw: String?, country: String): Boolean = try {
+            val json = raw?.takeIf { it.isNotBlank() }?.let { JsonParser.parseString(it) }?.takeIf { it.isJsonObject }?.asJsonObject
+            fun flag(name: String): Boolean? {
+                val value = json?.get(name)?.takeIf { it.isJsonPrimitive }?.asJsonPrimitive ?: return null
+                return when {
+                    value.isBoolean -> value.asBoolean
+                    value.isString && value.asString.equals("true", ignoreCase = true) -> true
+                    value.isString && value.asString.equals("false", ignoreCase = true) -> false
+                    else -> null
+                }
+            }
+            flag(country) ?: flag("default") ?: true
+        } catch (e: Exception) {
+            Timber.tag("RemoteConfigRepository").w(e, "$SERVICE_AVAILABLE_KEY JSON 파싱 실패: '$raw'")
+            true
+        }
     }
 
     /**
      * 광고 게이트 정책. Remote Config 의 JSON 을 파싱한다.
-     * 값이 비었거나 형식이 깨졌으면 [AdGatePolicy.FALLBACK] 을 돌려준다.
-     * 누락된 필드는 FALLBACK 값으로 채워, 항목 일부만 설정해도 동작한다.
+     * 값이 비었으면 [AdGatePolicy.DEFAULT], 형식이 깨졌으면 [AdGatePolicy.FALLBACK](억제 끔) 을 돌려준다.
+     * 누락된 필드는 DEFAULT 값으로 채워, 항목 일부만 설정해도 나머지는 앱 기본값대로 동작한다
+     * (코드 정리 A7 — 예전에는 FALLBACK 으로 채워 일부만 바꾸면 억제가 조용히 꺼졌다).
      */
     fun getAdGatePolicy(): AdGatePolicy {
         val raw = remoteConfig[AD_GATE_FAILURE_BACKOFF].asString()
-        if (raw.isBlank()) return AdGatePolicy.FALLBACK
+        if (raw.isBlank()) return AdGatePolicy.DEFAULT
         return try {
             val json = JSONObject(raw)
             AdGatePolicy(
                 failureThreshold = json.optInt(
-                    "failure_threshold", AdGatePolicy.FALLBACK.failureThreshold
+                    "failure_threshold", AdGatePolicy.DEFAULT.failureThreshold
                 ),
                 backoffHours = json.optInt(
-                    "backoff_hours", AdGatePolicy.FALLBACK.backoffHours
+                    "backoff_hours", AdGatePolicy.DEFAULT.backoffHours
                 ),
                 skipCooldownSeconds = json.optInt(
-                    "skip_cooldown_seconds", AdGatePolicy.FALLBACK.skipCooldownSeconds
+                    "skip_cooldown_seconds", AdGatePolicy.DEFAULT.skipCooldownSeconds
                 ),
             )
         } catch (e: Exception) {
@@ -78,6 +111,9 @@ class RemoteConfigRepository @Inject constructor(@ApplicationContext val context
             AdGatePolicy.FALLBACK
         }
     }
+
+    /** 리워드 광고 단위 ID. */
+    fun adUnitId(): String = remoteConfig[AD_UNIT_ID].asString()
 
     /** OpenAI 번역 모델 후보 목록. (기본값은 res/xml/remote_config_defaults.xml 참조) */
     fun getOpenAiTranslateModels(): List<String> = getTranslateModels("openai")
@@ -126,7 +162,10 @@ class RemoteConfigRepository @Inject constructor(@ApplicationContext val context
             minimumFetchIntervalInSeconds = 60 * 60 * 24
         })
 
+        // 기본값을 넣은 뒤 지금 값(지난번에 활성화한 값 + 기본값)을 한 번 내보낸다 — fetch 가 실패해도(오프라인) 흐름을 구독하는 곳이 직접 읽는
+        // 곳과 같은 값을 본다(코드 정리 B7 — 예전에는 fetch 성공 전까지 빈 맵이라 최신 버전 코드가 0 이었다)
         remoteConfig.setDefaultsAsync(R.xml.remote_config_defaults)
+            .addOnCompleteListener { retrieveConfig() }
 
         // [START fetch_config_with_callback]
         remoteConfig.fetchAndActivate()
@@ -144,7 +183,7 @@ class RemoteConfigRepository @Inject constructor(@ApplicationContext val context
         // [START add_config_update_listener]
         remoteConfig.addOnConfigUpdateListener(object : ConfigUpdateListener {
             override fun onUpdate(configUpdate: ConfigUpdate) {
-                Timber.tag(TAG).i(TAG, "Updated keys: %s", configUpdate.updatedKeys)
+                Timber.tag(TAG).i("Updated keys: %s", configUpdate.updatedKeys)
 
                 remoteConfig.activate().addOnCompleteListener {
                     Timber.tag(TAG).i("------------------- onUpdate ------------------")

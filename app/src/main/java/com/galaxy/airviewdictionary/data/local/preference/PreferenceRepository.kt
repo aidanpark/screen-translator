@@ -49,6 +49,12 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
     private val TAG = javaClass.simpleName
 
     companion object PreferencesKeys {
+        /** 핸들이 화면 가장자리에 붙기까지의 기본 지연(ms). 화면의 첫 값도 이 값을 쓴다(코드 정리 B9 — 설정 화면은 3000 으로 시작했다). */
+        const val DEFAULT_DOCKING_DELAY = 15000L
+
+        /** 메뉴바 · 번역창 · 답장 창의 기본 투명도. 화면의 첫 값도 이 값을 쓴다(코드 정리 B9 — 화면들은 1.0 으로 시작해 첫 프레임이 깜박였다). */
+        const val DEFAULT_TRANSPARENCY = 0.905f
+
         val WAS_TRAILER_SHOWN = booleanPreferencesKey("was_trailer_shown")
         val IS_REVIEW_DONE = booleanPreferencesKey("is_review_done")
 
@@ -231,6 +237,12 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
         code.takeIf { !ImageTranslation.isImageOnlyLanguage(it) || claude && ImageTranslation.Switch.enabled } ?: "auto"
     }
 
+    /**
+     * 저장된 원문 언어 그대로 — [sourceLanguageCodeFlow] 는 엔진 · 원격 스위치에 따라 이미지 전용 언어를 auto 로 가린다. 저장값을 고쳐야 하는 곳
+     * (Claude 키 삭제)이 쓴다(코드 정리 A9 — 가린 값을 읽어 이미지 전용 원문 언어가 지워지지 않았다).
+     */
+    suspend fun storedSourceLanguageCode(): String = preferenceFlow.first()[SOURCE_LANGUAGE_CODE] ?: "auto"
+
     val targetLanguageCodeFlow: Flow<String> = preferenceFlow.map { preferences ->
         Timber.tag(TAG).d(" preferences[TARGET_LANGUAGE_CODE] ${preferences[TARGET_LANGUAGE_CODE]}")
         // 기본 번역 대상은 사용자 시스템 언어. (소스는 auto → "아무 외국어 → 내 언어"가 기본이 된다)
@@ -319,7 +331,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
     }
 
     val dockingDelayFlow: Flow<Long> = preferenceFlow.map { preferences ->
-        preferences[DOCKING_DELAY] ?: 15000L
+        preferences[DOCKING_DELAY] ?: DEFAULT_DOCKING_DELAY
     }
 
     val dragHandleHapticFlow: Flow<Boolean> = preferenceFlow.map { preferences ->
@@ -331,7 +343,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
     }
 
     val menuBarTransparencyFlow: Flow<Float> = preferenceFlow.map { preferences ->
-        preferences[MENU_BAR_TRANSPARENCY] ?: 0.905f
+        preferences[MENU_BAR_TRANSPARENCY] ?: DEFAULT_TRANSPARENCY
     }
 
     val menuBarConfigFlow: Flow<MenuConfig> = preferenceFlow.map { preferences ->
@@ -339,7 +351,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
     }
 
     val translationTransparencyFlow: Flow<Float> = preferenceFlow.map { preferences ->
-        preferences[TRANSLATION_TRANSPARENCY] ?: 0.905f
+        preferences[TRANSLATION_TRANSPARENCY] ?: DEFAULT_TRANSPARENCY
     }
 
     val translationCloseDelayFlow: Flow<Long> = preferenceFlow.map { preferences ->
@@ -347,7 +359,7 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
     }
 
     val replyTransparencyFlow: Flow<Float> = preferenceFlow.map { preferences ->
-        preferences[REPLY_TRANSPARENCY] ?: 0.905f
+        preferences[REPLY_TRANSPARENCY] ?: DEFAULT_TRANSPARENCY
     }
 
     val automaticTranslationPlaybackFlow: Flow<Boolean> = preferenceFlow.map { preferences ->

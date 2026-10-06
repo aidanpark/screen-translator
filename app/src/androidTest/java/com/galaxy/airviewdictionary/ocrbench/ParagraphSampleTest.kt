@@ -1,5 +1,6 @@
 package com.galaxy.airviewdictionary.ocrbench
 
+import com.galaxy.airviewdictionary.data.local.vision.ParagraphAssembler
 import android.graphics.Bitmap
 import android.graphics.Rect
 import androidx.test.platform.app.InstrumentationRegistry
@@ -68,7 +69,7 @@ class ParagraphSampleTest {
                 fun blockOf(line: Line): Int =
                     blocks.firstOrNull { it.rect.contains(line.boundingBox.centerX(), line.boundingBox.centerY()) }?.id ?: -1
 
-                val paragraphs = repository.groupLinesIntoParagraphs(ls, direction, params)
+                val paragraphs = ParagraphAssembler.groupLinesIntoParagraphs(ls, direction, params)
                 var langGrouped = 0; var langExpected = 0; var langBad = 0
                 for (block in blocks) {
                     val own = ls.filter { blockOf(it) == block.id }

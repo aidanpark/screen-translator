@@ -1,9 +1,6 @@
 package com.galaxy.airviewdictionary.data.local.vision.kit.paddle
 
 import com.galaxy.airviewdictionary.data.remote.firebase.RemoteConfigRepository
-import com.google.firebase.Firebase
-import com.google.firebase.remoteconfig.FirebaseRemoteConfig
-import com.google.firebase.remoteconfig.remoteConfig
 
 /**
  * PP-OCRv5 끄기 스위치(`.docs/vision-engine-design.md` §19). 앱 업데이트 없이 Remote Config 로 되돌리기 위한 것이다.
@@ -18,8 +15,5 @@ internal object PaddleSwitch {
     /** auto 에서 PP-OCRv5 표본을 돌리는가. */
     val autoEnabled: Boolean get() = enabled && flag(RemoteConfigRepository.PADDLE_OCR_AUTO_ENABLED)
 
-    private fun flag(key: String): Boolean = runCatching {
-        val value = Firebase.remoteConfig.getValue(key)
-        value.source == FirebaseRemoteConfig.VALUE_SOURCE_STATIC || value.asBoolean()
-    }.getOrDefault(true)
+    private fun flag(key: String): Boolean = RemoteConfigRepository.switchOn(key)
 }

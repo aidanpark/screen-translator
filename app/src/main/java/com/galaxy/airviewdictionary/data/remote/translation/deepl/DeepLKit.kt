@@ -1,5 +1,7 @@
 package com.galaxy.airviewdictionary.data.remote.translation.deepl
 
+import com.galaxy.airviewdictionary.data.remote.translation.KeyValidationResult
+import com.galaxy.airviewdictionary.data.remote.translation.ApiKeyStore
 import android.content.Context
 import com.deepl.api.AuthorizationException
 import com.deepl.api.TextResult
@@ -14,9 +16,7 @@ import com.galaxy.airviewdictionary.data.remote.translation.TranslationResponse
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
@@ -127,16 +127,6 @@ class DeepLKit @Inject constructor(
         }
     }
 
-    /**
-     * API 키 검증 결과.
-     * 네트워크 오류는 키 자체의 문제가 아니므로 무효와 구분한다.
-     */
-    enum class KeyValidationResult {
-        VALID,
-        INVALID,
-        NETWORK_ERROR,
-    }
-
     companion object {
         // DeepL 계정 안내 링크
         const val URL_SUBSCRIPTION = "https://www.deepl.com/ko/your-account/subscription"
@@ -158,32 +148,16 @@ class DeepLKit @Inject constructor(
             }
         }
 
-        /**
-         * 저장된 API 키 존재 여부. 엔진 전환기 노출과 설정의 활성 표시가 이 값을 따른다.
-         * (SecureStore 는 flow 를 제공하지 않으므로, 키 저장/조회 시점에 갱신한다)
-         */
-        private val _keyActivatedStateFlow = MutableStateFlow(false)
-        val keyActivatedStateFlow: StateFlow<Boolean> = _keyActivatedStateFlow.asStateFlow()
+        /** 개인 API 키와 등록 여부([ApiKeyStore]). 엔진 전환기 노출과 설정의 활성 표시가 [keyActivatedStateFlow] 를 따른다. */
+        private val keys = ApiKeyStore(SecureStoreKey.DEEPL_API_KEY, "DeepLKit")
 
-        fun refreshAvailability(context: Context) {
-            _keyActivatedStateFlow.value = getStoredApiKey(context) != null
-        }
+        val keyActivatedStateFlow: StateFlow<Boolean> get() = keys.activated
 
-        /**
-         * 설정에서 저장한 API 키. 없거나 공백이면 null.
-         */
-        fun getStoredApiKey(context: Context): String? {
-            return SecureStore.get(context, SecureStoreKey.DEEPL_API_KEY)?.get()?.takeIf { it.isNotBlank() }
-        }
+        fun refreshAvailability(context: Context) = keys.refresh(context)
 
-        /**
-         * 설정에서 입력한 API 키를 암호화 저장한다. 빈 문자열 저장은 키 삭제로 동작한다.
-         */
-        fun storeApiKey(context: Context, apiKey: String) {
-            SecureStore.set(context, SecureStoreKey.DEEPL_API_KEY, apiKey.trim())
-            refreshAvailability(context)
-            Timber.tag("DeepLKit").i("storeApiKey saved (${apiKey.trim().length} chars)")
-        }
+        fun getStoredApiKey(context: Context): String? = keys.get(context)
+
+        fun storeApiKey(context: Context, apiKey: String) = keys.store(context, apiKey)
 
         val supportedSourceLanguageCodes = arrayOf(
             "auto", // Auto
