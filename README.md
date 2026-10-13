@@ -5,6 +5,13 @@
 <h1 align="center">Screen Translate</h1>
 
 <p align="center">
+  <a href="https://youtu.be/k68pj7epxiU">
+    <img src="https://img.youtube.com/vi/k68pj7epxiU/maxresdefault.jpg" width="640" alt="Watch the Screen Translate demo on YouTube"/>
+  </a><br>
+  <sub>▶ Watch the 35-second demo on YouTube</sub>
+</p>
+
+<p align="center">
   <strong>Point. Tap. Understand.</strong><br>
   <em>Instantly translate any text on your Android screen — right where it appears.</em>
 </p>
@@ -21,13 +28,6 @@
   <a href="https://play.google.com/store/apps/details?id=com.galaxy.airviewdictionary">
     <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" width="220" alt="Get it on Google Play"/>
   </a>
-</p>
-
-<p align="center">
-  <a href="https://youtu.be/k68pj7epxiU">
-    <img src="https://img.youtube.com/vi/k68pj7epxiU/maxresdefault.jpg" width="640" alt="Watch the Screen Translate demo on YouTube"/>
-  </a><br>
-  <sub>▶ Watch the 35-second demo on YouTube</sub>
 </p>
 
 ---
