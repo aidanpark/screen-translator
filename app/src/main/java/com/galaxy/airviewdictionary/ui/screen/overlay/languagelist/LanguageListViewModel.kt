@@ -56,12 +56,14 @@ class LanguageListViewModel(
 
     val sourceLanguageCodeHistoryFlow = preferenceRepository.sourceLanguageCodeHistoryFlow
         .map { stringList ->
-            stringList.map { languageCode -> translationRepository.getSupportedSourceLanguage(languageCode) }
+            stringList.take(PreferenceRepository.LANGUAGE_HISTORY_SIZE)
+                .map { languageCode -> translationRepository.getSupportedSourceLanguage(languageCode) }
         }
 
     val targetLanguageCodeHistoryFlow = preferenceRepository.targetLanguageCodeHistoryFlow
         .map { stringList ->
-            stringList.map { languageCode -> translationRepository.getSupportedTargetLanguage(languageCode) }
+            stringList.take(PreferenceRepository.LANGUAGE_HISTORY_SIZE)
+                .map { languageCode -> translationRepository.getSupportedTargetLanguage(languageCode) }
         }
 
     /**

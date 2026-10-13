@@ -55,6 +55,18 @@ class VisionKitSelector(context: Context? = null) {
             return base !in NON_LATIN_SCRIPT || base in MLKIT_SCRIPT_LANGUAGES || base in DEVANAGARI_LANGUAGES || base in PaddleKits.LANGUAGES
         }
 
+        /**
+         * 원문 언어를 auto 로 두어도 [sourceLanguageCode] 의 화면 글자를 읽는가 — 원문 언어 목록의 "Auto" 표시가 쓴다.
+         * auto 후보는 라틴 · 중국어 · 한국어 · 일본어 · 데바나가리 인식기이고, 아랍 · 동슬라브 키릴 · 태국 문자는 PP-OCRv5 표본이 맡는다.
+         * 그 표본은 끄기 스위치([paddleAutoOn], `PaddleSwitch.autoEnabled`)가 켜져 있을 때만 돈다. 읽을 엔진이 없는 언어(이미지 번역으로만
+         * 되는 언어)는 auto 가 읽지 못한다.
+         */
+        fun autoCanRead(sourceLanguageCode: String, paddleAutoOn: Boolean): Boolean {
+            if (!hasReaderFor(sourceLanguageCode)) return false
+            val base = sourceLanguageCode.trim().lowercase().replace('_', '-').substringBefore('-')
+            return base !in PaddleKits.LANGUAGES || paddleAutoOn
+        }
+
         /** ML Kit 전용 인식기(중국어 · 한국어 · 일본어)가 맡는 언어. 라틴 멈추기(`AutoLatinStop`)와 auto 의 "ML Kit 먼저" 판정도 이 표를 쓴다. */
         internal val MLKIT_SCRIPT_LANGUAGES = setOf("zh", "ko", "ja")
 

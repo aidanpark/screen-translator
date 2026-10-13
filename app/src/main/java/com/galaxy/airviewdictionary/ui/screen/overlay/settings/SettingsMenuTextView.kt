@@ -41,9 +41,13 @@ class SettingsMenuTextView private constructor() : OverlayView() {
         }
     }
 
-    suspend fun cast(applicationContext: Context, text: String, position: Point) {
+    /**
+     * [width] 는 설정 화면에서 이 이름이 차지한 폭(px). 같은 폭으로 그려야 긴 이름이 설정 화면과 같은 자리에서 줄바꿈된다.
+     * 없으면 글자 길이만큼 그린다.
+     */
+    suspend fun cast(applicationContext: Context, text: String, position: Point, width: Int? = null) {
         layoutParams = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
+            width ?: WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             position.x,
             position.y,

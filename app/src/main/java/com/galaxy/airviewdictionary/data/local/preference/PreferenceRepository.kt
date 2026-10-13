@@ -111,6 +111,9 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
         // TTS 목소리 목록 정렬 등에서 기준 언어로 쓴다.
         val LAST_USED_SOURCE_LANGUAGE_CODE = stringPreferencesKey("last_used_source_language_code")
 
+        /** 언어 목록 맨 위에 보이는 최근 사용 언어의 수. 예전 버전이 5개까지 저장했으므로 보여 줄 때도 이 수로 자른다. */
+        const val LANGUAGE_HISTORY_SIZE = 3
+
         val SOURCE_LANGUAGE_CODE_HISTORY = stringPreferencesKey("source_language_code_history")
         val TARGET_LANGUAGE_CODE_HISTORY = stringPreferencesKey("target_language_code_history")
 
@@ -405,8 +408,8 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
             val updatedList = mutableListOf(newLanguageCode)
             // 새 언어 코드가 이미 리스트에 있으면 제거하고, 그렇지 않으면 유지 (대소문자 구분 없음)
             currentHistory.filter { !it.equals(newLanguageCode, ignoreCase = true) }.forEach { updatedList.add(it) }
-            // 리스트의 크기가 5를 초과하지 않도록 조정
-            val finalList = if (updatedList.size > 5) updatedList.take(5) else updatedList
+            // 리스트의 크기가 LANGUAGE_HISTORY_SIZE 를 초과하지 않도록 조정
+            val finalList = updatedList.take(LANGUAGE_HISTORY_SIZE)
             // 변경된 리스트를 JSON 문자열로 변환 후 저장
             val jsonString = gson.toJson(finalList)
             update(if (isSourceLanguage) SOURCE_LANGUAGE_CODE_HISTORY else TARGET_LANGUAGE_CODE_HISTORY, jsonString)

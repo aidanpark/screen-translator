@@ -54,4 +54,20 @@ class HasReaderForTest {
         val devanagari = listOf("mai", "bho", "brx", "doi", "gom")
         assertEquals(emptyList<String>(), devanagari.filterNot { VisionKitSelector.hasReaderFor(it) })
     }
+
+    /** auto 로 두어도 읽히는 언어 — 읽을 엔진이 있는 언어이고, PP-OCRv5 문자권은 auto 표본 스위치가 켜져 있을 때만이다. */
+    @Test
+    fun autoReadsLanguagesWithAReader() {
+        val autoReadable = listOf("en", "fr", "vi", "ko", "ja", "zh-CN", "hi", "mr", "sr", "ES", "pt_BR")
+        assertEquals(emptyList<String>(), autoReadable.filterNot { VisionKitSelector.autoCanRead(it, paddleAutoOn = false) })
+        val unreadable = listOf("he", "el", "ka", "bn", "ta", "am", "sr-Cyrl")
+        assertEquals(emptyList<String>(), unreadable.filter { VisionKitSelector.autoCanRead(it, paddleAutoOn = true) })
+    }
+
+    @Test
+    fun autoReadsPaddleScriptsOnlyWhenTheAutoSwitchIsOn() {
+        val paddle = listOf("ar", "fa", "ur", "ru", "uk", "bg", "th")
+        assertEquals(emptyList<String>(), paddle.filter { VisionKitSelector.autoCanRead(it, paddleAutoOn = false) })
+        assertEquals(emptyList<String>(), paddle.filterNot { VisionKitSelector.autoCanRead(it, paddleAutoOn = true) })
+    }
 }

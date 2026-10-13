@@ -92,6 +92,7 @@ class SliderDialogView private constructor() : OverlayView() {
         steps: Int = 0,
         onValueChange: (Float) -> Unit,
         menuText: Pair<String, Point>? = null,
+        menuTextWidth: Int? = null,
         menuSubtext: Pair<MutableStateFlow<String>, Point>? = null,
         dockingDelayText: Pair<MutableStateFlow<String>, Point>? = null,
         menuBarVisibilityText: Pair<MutableStateFlow<String>, Point>? = null,
@@ -100,7 +101,7 @@ class SliderDialogView private constructor() : OverlayView() {
         onDismissRequest: () -> Unit,
     ) {
         menuText?.let {
-            SettingsMenuTextView.INSTANCE.cast(applicationContext, it.first, it.second)
+            SettingsMenuTextView.INSTANCE.cast(applicationContext, it.first, it.second, menuTextWidth)
         }
         menuSubtext?.let {
             SettingsMenuSubtextView.INSTANCE.cast(applicationContext, it.first, it.second)

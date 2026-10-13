@@ -60,6 +60,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.galaxy.airviewdictionary.R
+import com.galaxy.airviewdictionary.data.local.vision.kit.VisionKitSelector
+import com.galaxy.airviewdictionary.data.local.vision.kit.paddle.PaddleSwitch
 import com.galaxy.airviewdictionary.data.remote.translation.ImageTranslation
 import com.galaxy.airviewdictionary.data.remote.translation.Language
 import com.galaxy.airviewdictionary.data.remote.translation.TranslationKitType
@@ -328,6 +330,10 @@ class LanguageListView private constructor() : OverlayView() {
                 language.supportKitTypes.intersect(oppositeLanguage.supportKitTypes.toSet()).isNotEmpty()
         // 고를 수 없는 원문 언어는 엔진 로고도 회색으로 — 컬러 로고는 "이 엔진으로 번역된다" 로 읽힌다
         val grayLogos = type.value == Type.SOURCE && !enabled
+        // 원문 언어를 Auto 로 두어도 읽히는 언어에는 "Auto" 표시를 붙인다 — Auto 항목 자신에는 붙이지 않는다
+        val autoReadable = type.value == Type.SOURCE && !language.code.equals("auto", ignoreCase = true) &&
+                VisionKitSelector.autoCanRead(language.code, PaddleSwitch.autoEnabled)
+        val autoLabel = viewModel.translationRepository.getSupportedSourceLanguage("auto").displayName
 
         Button(
             onClick = {
@@ -352,11 +358,31 @@ class LanguageListView private constructor() : OverlayView() {
                     horizontalAlignment = Alignment.Start,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        text = language.displayName,
-                        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
-                        color = if (enabled) contentColor else contentDisabledColor
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = language.displayName,
+                            style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
+                            color = if (enabled) contentColor else contentDisabledColor,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (autoReadable) {
+                            // 언어 이름 바로 옆의 작은 표시
+                            Text(
+                                text = autoLabel,
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp, lineHeight = 10.sp),
+                                color = if (enabled) contentColor.copy(alpha = 0.65f) else contentDisabledColor,
+                                maxLines = 1,
+                                modifier = Modifier
+                                    .padding(start = 6.dp)
+                                    .border(
+                                        width = 0.6.dp,
+                                        color = if (enabled) contentColor.copy(alpha = 0.4f) else contentDisabledColor,
+                                        shape = RoundedCornerShape(4.dp)
+                                    )
+                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
                     Text(
                         text = language.localDisplayName,
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 13.sp),

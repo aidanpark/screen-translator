@@ -38,12 +38,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -402,7 +406,7 @@ class SettingsActivity : AVDActivity() {
     //                                                                                            //
     ////////////////////////////////////////////////////////////////////////////////////////////////
     @SuppressLint("LocalContextConfigurationRead")
-    @OptIn(ExperimentalSharedTransitionApi::class)
+    @OptIn(ExperimentalSharedTransitionApi::class, ExperimentalLayoutApi::class)
     @Composable
     fun Settings(
         paddingValues: PaddingValues,
@@ -739,6 +743,7 @@ class SettingsActivity : AVDActivity() {
                                                 settingStringFlow.value = getSecondValueText(value.toLong())
                                             },
                                             menuText = Pair(getString(R.string.settings_menu_pointer_docking_delay), dockingDelayTextOffset.value),
+                                            menuTextWidth = menuTextWidths[getString(R.string.settings_menu_pointer_docking_delay)],
                                             dockingDelayText = Pair(settingStringFlow, dockingDelaySubtextOffset.value),
                                             onDismissRequest = {
                                                 SliderDialogView.INSTANCE.clear()
@@ -754,7 +759,7 @@ class SettingsActivity : AVDActivity() {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    MenuText(
+                                    MenuRowText(
                                         text = getString(R.string.settings_menu_pointer_docking_delay),
                                         onTextPositioned = { offset ->
                                             dockingDelayTextOffset.value = Point(offset.x - startPadding, offset.y)
@@ -810,7 +815,7 @@ class SettingsActivity : AVDActivity() {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    MenuText(
+                                    MenuRowText(
                                         text = getString(R.string.settings_menu_haptic_feedback_to_detection),
                                     )
                                     Switch(
@@ -857,7 +862,7 @@ class SettingsActivity : AVDActivity() {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    MenuText(
+                                    MenuRowText(
                                         text = getString(R.string.settings_menu_menubar_visible),
                                     )
                                     Switch(
@@ -903,6 +908,7 @@ class SettingsActivity : AVDActivity() {
                                                 settingStringFlow.value = getTransparencyValueText(1.0f - value)
                                             },
                                             menuText = Pair(getString(R.string.settings_menu_menubar_transparency), menuBarTransparencyTextOffset.value),
+                                            menuTextWidth = menuTextWidths[getString(R.string.settings_menu_menubar_transparency)],
                                             menuBarVisibilityText = Pair(settingStringFlow, menuBarTransparencySubtextOffset.value),
                                             onDismissRequest = {
                                                 SliderDialogView.INSTANCE.clear()
@@ -919,7 +925,7 @@ class SettingsActivity : AVDActivity() {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    MenuText(
+                                    MenuRowText(
                                         text = getString(R.string.settings_menu_menubar_transparency),
                                         onTextPositioned = { offset ->
                                             menuBarTransparencyTextOffset.value = Point(offset.x - startPadding, offset.y)
@@ -1010,6 +1016,7 @@ class SettingsActivity : AVDActivity() {
                                                     settingStringFlow.value = updatedMenuBarConfig.name
                                                 },
                                                 menuText = Pair(getString(R.string.settings_menu_menubar_composition), menuBarConfigTextOffset.value),
+                                                menuTextWidth = menuTextWidths[getString(R.string.settings_menu_menubar_composition)],
                                                 menuBarConfigText = Pair(settingStringFlow, menuBarConfigSubOffset.value),
                                                 onDismissRequest = {
                                                     SliderDialogView.INSTANCE.clear()
@@ -1048,7 +1055,8 @@ class SettingsActivity : AVDActivity() {
                                                             .calculateLeftPadding(layoutDirection)
                                                             .toPx(context)
                                                         val posX = offset.x.toInt() + layoutCoordinates.size.width - startPadding
-                                                        menuBarConfigSubOffset.value = Point(posX, offset.y.toInt())
+                                                        // 세로는 미리보기 자신의 위치로 정한다(아래). 여기서는 가로만 갱신한다
+                                                        menuBarConfigSubOffset.value = Point(posX, menuBarConfigSubOffset.value.y)
                                                     },
                                                 contentAlignment = Alignment.Center
                                             ) {
@@ -1059,14 +1067,16 @@ class SettingsActivity : AVDActivity() {
                                                         menuBarConfigTextOffset.value = Point(offset.x - startPadding, offset.y)
                                                     },
                                                     modifier = Modifier
-                                                        .align(Alignment.TopStart)
+                                                        // 한 줄이든 두 줄이든 행의 세로 가운데에 둔다
+                                                        .align(Alignment.CenterStart)
                                                         .fillMaxWidth(0.5f)
-                                                        .padding(top = 14.dp, start = 5.dp)
+                                                        .padding(vertical = 7.dp, horizontal = 5.dp)
                                                 )
                                                 val scaleFactor = 0.48f
                                                 Box(
                                                     modifier = Modifier
-                                                        .align(Alignment.TopEnd)
+                                                        // 이름과 같은 세로 가운데. 위아래 여백이 같아 행이 높아져도 가운데에 남는다
+                                                        .align(Alignment.CenterEnd)
                                                         .padding(top = 15.dp, bottom = 15.dp, end = 8.dp)
                                                         .wrapContentSize()
                                                         .layout { measurable, constraints ->
@@ -1079,6 +1089,12 @@ class SettingsActivity : AVDActivity() {
                                                             layout(width, height) {
                                                                 placeable.placeRelative(0, 0)
                                                             }
+                                                        }
+                                                        // 설정 모드 오버레이는 미리보기를 창 위에서 15dp 아래에 그린다. 미리보기가 행 가운데에 있으므로
+                                                        // 행 위쪽이 아니라 미리보기의 실제 위치에서 15dp 를 빼 창을 놓는다
+                                                        .onGloballyPositioned { layoutCoordinates ->
+                                                            val top = layoutCoordinates.positionOnScreen().y.toInt() - 15.dp.toPx(context)
+                                                            menuBarConfigSubOffset.value = Point(menuBarConfigSubOffset.value.x, top)
                                                         }
                                                 ) {
                                                     MenuBar(
@@ -1254,6 +1270,7 @@ class SettingsActivity : AVDActivity() {
                                                     settingStringFlow.value = getTransparencyValueText(1.0f - value)
                                                 },
                                                 menuText = Pair(getString(R.string.settings_menu_translation_transparency), translationTransparencyTextOffset.value),
+                                                menuTextWidth = menuTextWidths[getString(R.string.settings_menu_translation_transparency)],
                                                 menuSubtext = Pair(settingStringFlow, translationTransparencySubtextOffset.value),
                                                 onDismissRequest = {
                                                     closeTranslation()
@@ -1289,6 +1306,7 @@ class SettingsActivity : AVDActivity() {
                                                 settingStringFlow.value = getSecondValueText(value.toLong())
                                             },
                                             menuText = Pair(getString(R.string.settings_menu_translation_close_delay), translationCloseDelayTextOffset.value),
+                                            menuTextWidth = menuTextWidths[getString(R.string.settings_menu_translation_close_delay)],
                                             menuSubtext = Pair(settingStringFlow, translationCloseDelaySubtextOffset.value),
                                             onDismissRequest = {
                                                 SliderDialogView.INSTANCE.clear()
@@ -1321,6 +1339,7 @@ class SettingsActivity : AVDActivity() {
                                                 settingStringFlow.value = getTransparencyValueText(1.0f - value)
                                             },
                                             menuText = Pair(getString(R.string.settings_menu_reply_transparency), replyTransparencyTextOffset.value),
+                                            menuTextWidth = menuTextWidths[getString(R.string.settings_menu_reply_transparency)],
                                             menuSubtext = Pair(settingStringFlow, replyTransparencySubtextOffset.value),
                                             onDismissRequest = {
                                                 SliderDialogView.INSTANCE.clear()
@@ -1337,48 +1356,60 @@ class SettingsActivity : AVDActivity() {
                                     isRtl = isRtl,
                                 )
 
-                                // 읽기 대상 (소스/타겟)
+                                // 읽기 대상 (소스/타겟) — 스위치는 다른 스위치 행처럼 오른쪽 끝의 고정 폭 영역에 두고 그 아래에 지금 읽는 대상을 작은 글자로 적는다.
+                                // 이름은 남은 폭에서 줄바꿈되므로 언어가 바뀌어도 스위치 자리와 크기가 변하지 않는다.
+                                val readTargetIsTarget = ttsReadTarget == TTSReadTarget.TARGET
+                                val readTargetLabel = getString(
+                                    if (readTargetIsTarget) R.string.settings_tts_read_target_target else R.string.settings_tts_read_target_source
+                                )
                                 MenuItem(
                                     menuItemPosition = MenuItemPosition.Top,
+                                    onClick = {
+                                        viewModel.updateTtsReadTarget(if (readTargetIsTarget) TTSReadTarget.SOURCE else TTSReadTarget.TARGET)
+                                    }
                                 ) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(end = 6.dp),
+                                            .heightIn(min = 50.dp),
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        horizontalArrangement = Arrangement.SpaceBetween,
                                     ) {
-                                        MenuText(
+                                        MenuRowText(
                                             text = getString(R.string.settings_menu_tts_read_target),
                                         )
-                                        Row(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(17.dp))
-                                                .background(if (isDarkMode) Color(0xFF2b2b2b) else Color(0xFFe8e8e8))
-                                                .padding(3.dp)
-                                        ) {
-                                            TTSReadTarget.entries.forEach { readTarget ->
-                                                val selected = ttsReadTarget == readTarget
-                                                val label = when (readTarget) {
-                                                    TTSReadTarget.SOURCE -> getString(R.string.settings_tts_read_target_source)
-                                                    TTSReadTarget.TARGET -> getString(R.string.settings_tts_read_target_target)
-                                                }
-                                                Text(
-                                                    text = label,
-                                                    color = if (selected) switchThumbColor else Color(0xFF848487),
-                                                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = fontDimensionResource(R.dimen.settings_menu_subtext_size)),
-                                                    modifier = Modifier
-                                                        .clip(RoundedCornerShape(14.dp))
-                                                        .background(if (selected) switchTrackColor else Color.Transparent)
-                                                        .clickable {
-                                                            viewModel.updateTtsReadTarget(readTarget)
-                                                        }
-                                                        .padding(horizontal = 12.dp, vertical = 5.dp)
-                                                        .semantics {
-                                                            contentDescription = "TTS read target ${readTarget.name}"
-                                                        },
-                                                )
-                                            }
+                                        // 스위치는 행의 세로 가운데에 두고, 값 글자는 스위치 트랙 아래 남는 자리에 그린다. 글자가 이 상자의
+                                        // 높이를 정하지 않으므로(스위치가 정한다) 값 글자 때문에 행이 높아지지 않는다.
+                                        Box(modifier = Modifier.width(100.dp)) {
+                                            Switch(
+                                                checked = readTargetIsTarget,
+                                                onCheckedChange = { value ->
+                                                    viewModel.updateTtsReadTarget(if (value) TTSReadTarget.TARGET else TTSReadTarget.SOURCE)
+                                                },
+                                                colors = SwitchDefaults.colors(
+                                                    checkedThumbColor = switchThumbColor,
+                                                    checkedTrackColor = switchTrackColor
+                                                ),
+                                                modifier = Modifier
+                                                    .align(Alignment.CenterEnd)
+                                                    .scale(switchScale)
+                                                    .semantics {
+                                                        contentDescription = "TTS read target ${if (readTargetIsTarget) "TARGET" else "SOURCE"}"
+                                                    },
+                                            )
+                                            Text(
+                                                text = readTargetLabel,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                                color = if (isDarkMode) Color(0xFFb7b7ba) else Color(0xFF626265),
+                                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp, lineHeight = 12.sp),
+                                                modifier = Modifier
+                                                    .align(Alignment.BottomEnd)
+                                                    // 확대 비율(switchScale)로 줄어 그려진 스위치 트랙의 오른쪽 끝에 맞춘다
+                                                    .padding(end = 8.dp)
+                                                    // 트랙과 간격을 둔다. offset 은 배치만 옮기므로 행 높이에는 영향이 없다
+                                                    .offset(y = 5.dp),
+                                            )
                                         }
                                     }
                                 }
@@ -1395,7 +1426,7 @@ class SettingsActivity : AVDActivity() {
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        MenuText(
+                                        MenuRowText(
                                             text = getString(R.string.settings_menu_automated_read_aloud),
                                         )
                                         Switch(
@@ -1450,6 +1481,7 @@ class SettingsActivity : AVDActivity() {
                                                     settingFloatFlow.value = value
                                                 },
                                                 menuText = Pair(getString(R.string.settings_menu_tts_rate), ttsSpeechRateTextOffset.value),
+                                                menuTextWidth = menuTextWidths[getString(R.string.settings_menu_tts_rate)],
                                                 speechRateText = Pair(settingFloatFlow, ttsSpeechRateIconOffset.value),
                                                 onDismissRequest = {
                                                     SliderDialogView.INSTANCE.clear()
@@ -1466,7 +1498,7 @@ class SettingsActivity : AVDActivity() {
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        MenuText(
+                                        MenuRowText(
                                             text = getString(R.string.settings_menu_tts_rate),
                                             onTextPositioned = { offset ->
                                                 ttsSpeechRateTextOffset.value = Point(offset.x - startPadding, offset.y)
@@ -1591,7 +1623,7 @@ class SettingsActivity : AVDActivity() {
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    MenuText(
+                                    MenuRowText(
                                         text = getString(R.string.settings_menu_app_version),
                                     )
                                     if (latestVersionCode > versionCode) {
@@ -1789,7 +1821,7 @@ class SettingsActivity : AVDActivity() {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                MenuText(
+                MenuRowText(
                     text = text,
                     onGloballyPositioned = onGloballyPositioned,
                     onTextPositioned = onTextPositioned,
@@ -2550,6 +2582,35 @@ class SettingsActivity : AVDActivity() {
         }
     }
 
+    /**
+     * 메뉴 이름이 설정 화면에서 차지한 폭(px). 슬라이더를 열면 오버레이가 같은 자리에 이름을 다시 그리는데, 이 폭으로 그려야
+     * 설정 화면과 같은 자리에서 줄바꿈된다.
+     */
+    private val menuTextWidths = mutableMapOf<String, Int>()
+
+    /**
+     * 한 줄 안의 설정 이름. 뒤따르는 값 · 스위치 · 선택 버튼을 먼저 자리 잡고, 남은 폭 안에서 이름이 줄바꿈된다.
+     * 언어에 따라 이름이 길어져도 잘리거나 뒤따르는 요소가 찌그러지지 않게 한다. 스위치는 [scale] 로 키워 그려 레이아웃보다 넓게
+     * 보이므로 이름 오른쪽에 여백을 둔다.
+     */
+    @Composable
+    fun RowScope.MenuRowText(
+        text: String,
+        modifier: Modifier = Modifier,
+        onGloballyPositioned: ((LayoutCoordinates) -> Unit)? = null,
+        onTextPositioned: ((Point) -> Unit)? = null,
+    ) {
+        MenuText(
+            text = text,
+            onGloballyPositioned = onGloballyPositioned,
+            onTextPositioned = onTextPositioned,
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .padding(end = 10.dp)
+                .then(modifier),
+        )
+    }
+
     @Composable
     fun MenuText(
         modifier: Modifier = Modifier,
@@ -2570,6 +2631,7 @@ class SettingsActivity : AVDActivity() {
             maxLines = maxLines,
             overflow = TextOverflow.Ellipsis,
             modifier = modifier.onGloballyPositioned { layoutCoordinates ->
+                menuTextWidths[text] = layoutCoordinates.size.width
                 onGloballyPositioned?.let { it(layoutCoordinates) }
                 val offset = layoutCoordinates.positionOnScreen()
                 onTextPositioned?.let { it(Point(offset.x.toInt(), offset.y.toInt())) }
