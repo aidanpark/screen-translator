@@ -1,5 +1,6 @@
 package com.galaxy.airviewdictionary.ui.screen.overlay.translation
 
+import com.galaxy.airviewdictionary.data.local.preference.PreferenceRepository
 import android.content.Context
 import android.graphics.Paint
 import android.graphics.PixelFormat
@@ -153,6 +154,8 @@ class TranslationErrorView : OverlayView() {
         super.cast(applicationContext)
 
         val generation = ++castGeneration
+        // 무제한이면 타이머를 두지 않는다 — 새 제스처가 시작되면 requestCapture() 가 이 창을 닫는다.
+        if (PreferenceRepository.isTranslationCloseDelayInfinite(closeDelayMillis)) return
         launchInOverlayViewCoroutineScope {
             delay(closeDelayMillis)
             // 내용 동등성(CAS)이 아니라 세대로 판단한다 — 같은 단어·같은 실패의 재시도가

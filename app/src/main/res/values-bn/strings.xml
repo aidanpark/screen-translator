@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">মেনু বার বিন্যাস</string>
     <string name="settings_menu_cat_translation">অনুবাদ</string>
     <string name="settings_menu_translation_transparency">অনুবাদ স্বচ্ছতা</string>
-    <string name="settings_menu_translation_close_delay">বন্ধে বিলম্ব</string>
+    <string name="settings_menu_translation_close_delay">অনুবাদ প্রদর্শনের সময়</string>
     <string name="settings_menu_automated_read_aloud">অনুবাদের স্বয়ংক্রিয় পাঠ</string>
     <string name="settings_menu_reply_transparency">উত্তর স্বচ্ছতা</string>
     <string name="settings_menu_cat_tts">পাঠ-আওয়াজ</string>

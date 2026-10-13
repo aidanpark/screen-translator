@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">ಮೆನು ಬಾರ್ ಸಂಯೋಜನೆ</string>
     <string name="settings_menu_cat_translation">ಅನುವಾದ</string>
     <string name="settings_menu_translation_transparency">ಅನುವಾದ ಪಾರದರ್ಶಕತೆ</string>
-    <string name="settings_menu_translation_close_delay">ಮುಚ್ಚುವ ವಿಳಂಬ</string>
+    <string name="settings_menu_translation_close_delay">ಅನುವಾದ ಪ್ರದರ್ಶನ ಸಮಯ</string>
     <string name="settings_menu_automated_read_aloud">ಅನುವಾದದ ಸ್ವಯಂಚಾಲಿತ ಓದು</string>
     <string name="settings_menu_reply_transparency">ಉತ್ತರ ಪಾರದರ್ಶಕತೆ</string>
     <string name="settings_menu_cat_tts">ಪಠ್ಯದಿಂದ ಮಾತಿಗೆ</string>

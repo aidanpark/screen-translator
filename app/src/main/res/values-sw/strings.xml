@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Muundo wa upau wa menyu</string>
     <string name="settings_menu_cat_translation">Tafsiri</string>
     <string name="settings_menu_translation_transparency">Uwazi wa Tafsiri</string>
-    <string name="settings_menu_translation_close_delay">Ucheleweshaji wa Kufunga</string>
+    <string name="settings_menu_translation_close_delay">Muda wa Kuonyesha Tafsiri</string>
     <string name="settings_menu_automated_read_aloud">Kusoma tafsiri kiotomatiki</string>
     <string name="settings_menu_reply_transparency">Uwazi wa Majibu</string>
     <string name="settings_menu_cat_tts">Maandishi kwa Sauti</string>

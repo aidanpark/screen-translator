@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">ອົງປະກອບຂອງແຖບເມນູ</string>
   <string name="settings_menu_cat_translation">ການແປ</string>
   <string name="settings_menu_translation_transparency">ຄວາມໂປ່ງໃສແປ</string>
-  <string name="settings_menu_translation_close_delay">ຊ້າໃນການປິດ</string>
+  <string name="settings_menu_translation_close_delay">ໄລຍະເວລາສະແດງການແປ</string>
   <string name="settings_menu_automated_read_aloud">ອ່ານຄຳແປອັດຕະໂນມັດ</string>
   <string name="settings_menu_reply_transparency">ຄວາມໂປ່ງໃສຕອບ</string>
   <string name="settings_menu_cat_tts">ຂໍ້ຄວາມເປັນສຽງ</string>

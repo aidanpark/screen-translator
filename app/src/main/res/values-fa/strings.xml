@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">چیدمان نوار منو</string>
     <string name="settings_menu_cat_translation">ترجمه</string>
     <string name="settings_menu_translation_transparency">شفافیت ترجمه</string>
-    <string name="settings_menu_translation_close_delay">تأخیر بستن</string>
+    <string name="settings_menu_translation_close_delay">مدت نمایش ترجمه</string>
     <string name="settings_menu_automated_read_aloud">خواندن خودکار ترجمه</string>
     <string name="settings_menu_reply_transparency">شفافیت پاسخ</string>
     <string name="settings_menu_cat_tts">متن به گفتار</string>

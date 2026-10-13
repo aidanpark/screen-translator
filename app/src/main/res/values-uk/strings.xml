@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Склад панелі меню</string>
     <string name="settings_menu_cat_translation">Переклад</string>
     <string name="settings_menu_translation_transparency">Прозорість перекладу</string>
-    <string name="settings_menu_translation_close_delay">Затримка закриття</string>
+    <string name="settings_menu_translation_close_delay">Час показу перекладу</string>
     <string name="settings_menu_automated_read_aloud">Автоматичне читання перекладу</string>
     <string name="settings_menu_reply_transparency">Прозорість відповіді</string>
     <string name="settings_menu_cat_tts">Текст у мову</string>

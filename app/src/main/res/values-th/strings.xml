@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">องค์ประกอบแถบเมนู</string>
   <string name="settings_menu_cat_translation">การแปล</string>
   <string name="settings_menu_translation_transparency">ความโปร่งใสของการแปล</string>
-  <string name="settings_menu_translation_close_delay">ความล่าช้าในการปิด</string>
+  <string name="settings_menu_translation_close_delay">ระยะเวลาแสดงคำแปล</string>
   <string name="settings_menu_automated_read_aloud">อ่านคำแปลอัตโนมัติ</string>
   <string name="settings_menu_reply_transparency">ความโปร่งใสของการตอบกลับ</string>
   <string name="settings_menu_cat_tts">ข้อความเป็นเสียง</string>

@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">メニューバーの構成</string>
   <string name="settings_menu_cat_translation">翻訳</string>
   <string name="settings_menu_translation_transparency">翻訳の透明度</string>
-  <string name="settings_menu_translation_close_delay">閉じる遅延</string>
+  <string name="settings_menu_translation_close_delay">翻訳ウィンドウの表示時間</string>
   <string name="settings_menu_automated_read_aloud">翻訳の自動読み上げ</string>
   <string name="settings_menu_reply_transparency">返信の透明度</string>
   <string name="settings_menu_cat_tts">音声読み上げ</string>

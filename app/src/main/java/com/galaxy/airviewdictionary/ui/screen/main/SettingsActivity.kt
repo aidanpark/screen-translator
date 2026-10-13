@@ -576,7 +576,6 @@ class SettingsActivity : AVDActivity() {
         fun getSecondValueText(second: Long): String {
             return "${round(second / 1000.0 * 10) / 10} sec"
         }
-
         AutoRefreshEveryMinute {
             Column(
                 modifier = Modifier.fillMaxSize()
@@ -1282,39 +1281,79 @@ class SettingsActivity : AVDActivity() {
                                 }
                             )
 
-                            MenuTextItem(
+                            // 닫기 지연시간 — 1 ~ 14초, 끝점(15초)은 무제한(핸들을 다시 만질 때까지 번역창을 둔다).
+                            // 값 영역과 설정 모드 오버레이는 포인터 도킹 지연과 같은 구조(고정 폭 영역 · ∞ 아이콘)다.
+                            MenuItem(
                                 menuItemPosition = MenuItemPosition.Middle,
-                                text = getString(R.string.settings_menu_translation_close_delay),
-                                paddingValues = paddingValues,
-                                onTextPositioned = { offset ->
-                                    translationCloseDelayTextOffset.value = Point(offset.x - startPadding, offset.y)
-                                },
-                                subText = getSecondValueText(translationCloseDelay),
-                                onSubtextPositioned = { offset ->
-                                    translationCloseDelaySubtextOffset.value = Point(offset.x - startPadding, offset.y)
-                                },
                                 onClick = {
                                     coroutineScope.launch {
                                         settingStringFlow.value = getSecondValueText(translationCloseDelay)
                                         SliderDialogView.INSTANCE.cast(
                                             applicationContext = applicationContext,
                                             initialValue = translationCloseDelay.toFloat(),
-                                            valueRange = 500.0f..7000.0f,
-                                            steps = 12,
+                                            valueRange = 1000.0f..15000.0f,
+                                            steps = 13,
                                             onValueChange = { value ->
                                                 viewModel.updateTranslationCloseDelay(value.toLong())
                                                 settingStringFlow.value = getSecondValueText(value.toLong())
                                             },
                                             menuText = Pair(getString(R.string.settings_menu_translation_close_delay), translationCloseDelayTextOffset.value),
                                             menuTextWidth = menuTextWidths[getString(R.string.settings_menu_translation_close_delay)],
-                                            menuSubtext = Pair(settingStringFlow, translationCloseDelaySubtextOffset.value),
+                                            dockingDelayText = Pair(settingStringFlow, translationCloseDelaySubtextOffset.value),
                                             onDismissRequest = {
                                                 SliderDialogView.INSTANCE.clear()
                                             },
                                         )
                                     }
                                 }
-                            )
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 50.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    MenuRowText(
+                                        text = getString(R.string.settings_menu_translation_close_delay),
+                                        onTextPositioned = { offset ->
+                                            translationCloseDelayTextOffset.value = Point(offset.x - startPadding, offset.y)
+                                        },
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .height(38.dp)
+                                            .width(80.dp)
+                                            .onGloballyPositioned { layoutCoordinates ->
+                                                val offset = layoutCoordinates.positionOnScreen()
+                                                val startPadding = paddingValues
+                                                    .calculateLeftPadding(layoutDirection)
+                                                    .toPx(context)
+                                                val posX = offset.x.toInt() + layoutCoordinates.size.width - startPadding
+                                                translationCloseDelaySubtextOffset.value = Point(posX, offset.y.toInt())
+                                            },
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        if (!PreferenceRepository.isTranslationCloseDelayInfinite(translationCloseDelay)) {
+                                            Text(
+                                                modifier = Modifier.padding(end = 6.dp),
+                                                text = getSecondValueText(translationCloseDelay),
+                                                color = subContentColor,
+                                                style = MaterialTheme.typography.bodyMedium.copy(fontSize = fontDimensionResource(R.dimen.settings_menu_subtext_size)),
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.AllInclusive,
+                                                contentDescription = "Translation close delay Infinity",
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .padding(end = 12.dp),
+                                                tint = subContentColor
+                                            )
+                                        }
+                                    }
+                                }
+                            }
 
                             MenuTextItem(
                                 menuItemPosition = MenuItemPosition.Bottom,

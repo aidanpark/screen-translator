@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">Izvēlnes joslas sastāvs</string>
   <string name="settings_menu_cat_translation">Tulkot</string>
   <string name="settings_menu_translation_transparency">Tulk. caurspīdīgums</string>
-  <string name="settings_menu_translation_close_delay">Aizvēršanas aizkave</string>
+  <string name="settings_menu_translation_close_delay">Tulkojuma rādīšanas ilgums</string>
   <string name="settings_menu_automated_read_aloud">Tulkojuma automātiskā lasīšana</string>
   <string name="settings_menu_reply_transparency">Atbildes caurspīdīgums</string>
   <string name="settings_menu_cat_tts">Teksts uz runu</string>

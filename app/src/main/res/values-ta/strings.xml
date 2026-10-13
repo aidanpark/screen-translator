@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">மெனு பட்டி அமைப்பு</string>
     <string name="settings_menu_cat_translation">மொழிபெயர்ப்பு</string>
     <string name="settings_menu_translation_transparency">மொழிபெயர்ப்பின் வெளிப்படைத்தன்மை</string>
-    <string name="settings_menu_translation_close_delay">மூடு தாமதம்</string>
+    <string name="settings_menu_translation_close_delay">மொழிபெயர்ப்பு காட்சி நேரம்</string>
     <string name="settings_menu_automated_read_aloud">மொழிபெயர்ப்பை தானாக வாசித்தல்</string>
     <string name="settings_menu_reply_transparency">பதில் வெளிப்படைத்தன்மை</string>
     <string name="settings_menu_cat_tts">உரை-இல்-பேசல்</string>

@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Цэсний мөрийн бүрэлдэхүүн</string>
     <string name="settings_menu_cat_translation">Орчуулга</string>
     <string name="settings_menu_translation_transparency">Орчуулгын тунгалаг</string>
-    <string name="settings_menu_translation_close_delay">Хаалтын саатал</string>
+    <string name="settings_menu_translation_close_delay">Орчуулга харуулах хугацаа</string>
     <string name="settings_menu_automated_read_aloud">Орчуулгын авто уншлага</string>
     <string name="settings_menu_reply_transparency">Хариуг тунгалаг болгох</string>
     <string name="settings_menu_cat_tts">Текст дуугаар</string>

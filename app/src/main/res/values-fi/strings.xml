@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Valikkopalkin kokoonpano</string>
     <string name="settings_menu_cat_translation">Käännös</string>
     <string name="settings_menu_translation_transparency">Käännöksen läpinäkyvyys</string>
-    <string name="settings_menu_translation_close_delay">Sulkemisen viive</string>
+    <string name="settings_menu_translation_close_delay">Käännöksen näyttöaika</string>
     <string name="settings_menu_automated_read_aloud">Käännöksen automaattinen luku</string>
     <string name="settings_menu_reply_transparency">Vastauksen läpinäkyvyys</string>
     <string name="settings_menu_cat_tts">Teksti puheeksi</string>

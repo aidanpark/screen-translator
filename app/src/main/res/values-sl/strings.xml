@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Sestava menijske vrstice</string>
     <string name="settings_menu_cat_translation">Prevod</string>
     <string name="settings_menu_translation_transparency">Prosojnost prevoda</string>
-    <string name="settings_menu_translation_close_delay">Zakasnitev zapiranja</string>
+    <string name="settings_menu_translation_close_delay">Čas prikaza prevoda</string>
     <string name="settings_menu_automated_read_aloud">Samodejno branje prevoda</string>
     <string name="settings_menu_reply_transparency">Prosojnost odgovora</string>
     <string name="settings_menu_cat_tts">Besedilo v govor</string>

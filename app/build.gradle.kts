@@ -24,8 +24,8 @@ android {
         applicationId = "com.galaxy.airviewdictionary"
         minSdk = 26
         targetSdk = 36
-        versionCode = 20809
-        versionName = "2.8.9"
+        versionCode = 20810
+        versionName = "2.8.10"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     bundle {

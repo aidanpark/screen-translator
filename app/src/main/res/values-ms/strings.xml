@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Komposisi bar menu</string>
     <string name="settings_menu_cat_translation">Terjemahan</string>
     <string name="settings_menu_translation_transparency">Ketelusan terjemahan</string>
-    <string name="settings_menu_translation_close_delay">Lengah tutup</string>
+    <string name="settings_menu_translation_close_delay">Tempoh paparan terjemahan</string>
     <string name="settings_menu_automated_read_aloud">Bacaan automatik terjemahan</string>
     <string name="settings_menu_reply_transparency">Ketelusan balasan</string>
     <string name="settings_menu_cat_tts">Teks ke suara</string>

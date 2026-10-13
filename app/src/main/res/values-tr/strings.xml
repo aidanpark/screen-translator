@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">Menü çubuğu düzeni</string>
   <string name="settings_menu_cat_translation">Çeviri</string>
   <string name="settings_menu_translation_transparency">Çeviri Şeffaflığı</string>
-  <string name="settings_menu_translation_close_delay">Kapanma Gecikmesi</string>
+  <string name="settings_menu_translation_close_delay">Çeviri Gösterim Süresi</string>
   <string name="settings_menu_automated_read_aloud">Çeviriyi Otomatik Okuma</string>
   <string name="settings_menu_reply_transparency">Yanıt Şeffaflığı</string>
   <string name="settings_menu_cat_tts">Metin Konuşmaya</string>

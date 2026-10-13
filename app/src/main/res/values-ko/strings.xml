@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">메뉴바 구성</string>
   <string name="settings_menu_cat_translation">번역</string>
   <string name="settings_menu_translation_transparency">번역창 투명도</string>
-  <string name="settings_menu_translation_close_delay">닫기 지연시간</string>
+  <string name="settings_menu_translation_close_delay">번역창 유지 시간</string>
   <string name="settings_menu_automated_read_aloud">번역 자동 읽기</string>
   <string name="settings_menu_reply_transparency">답장창 투명도</string>
   <string name="settings_menu_cat_tts">TTS</string>

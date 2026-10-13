@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Sastav trake izbornika</string>
     <string name="settings_menu_cat_translation">Prijevod</string>
     <string name="settings_menu_translation_transparency">Prozirnost prijevoda</string>
-    <string name="settings_menu_translation_close_delay">Kašnjenje zatvaranja</string>
+    <string name="settings_menu_translation_close_delay">Trajanje prikaza prijevoda</string>
     <string name="settings_menu_automated_read_aloud">Auto čitanje prijevoda</string>
     <string name="settings_menu_reply_transparency">Prozirnost odgovora</string>
     <string name="settings_menu_cat_tts">Tekst u govor</string>

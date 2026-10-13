@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">Bố cục thanh menu</string>
   <string name="settings_menu_cat_translation">Dịch</string>
   <string name="settings_menu_translation_transparency">Độ trong suốt của dịch</string>
-  <string name="settings_menu_translation_close_delay">Trễ đóng</string>
+  <string name="settings_menu_translation_close_delay">Thời gian hiển thị bản dịch</string>
   <string name="settings_menu_automated_read_aloud">Tự động đọc bản dịch</string>
   <string name="settings_menu_reply_transparency">Độ trong suốt của phản hồi</string>
   <string name="settings_menu_cat_tts">Văn bản thành giọng nói</string>

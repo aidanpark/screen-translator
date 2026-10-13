@@ -52,6 +52,14 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
         /** 핸들이 화면 가장자리에 붙기까지의 기본 지연(ms). 화면의 첫 값도 이 값을 쓴다(코드 정리 B9 — 설정 화면은 3000 으로 시작했다). */
         const val DEFAULT_DOCKING_DELAY = 15000L
 
+        /**
+         * 번역창 닫기 지연시간의 "무제한" 값(ms). 슬라이더는 1 ~ 14초에 더해 이 값을 끝점으로 둔다(도킹 지연의 15000 과 같은 규칙).
+         * 이 값 이상이면 시간이 지나도 번역창을 닫지 않고, 핸들을 다시 만질 때까지 둔다.
+         */
+        const val TRANSLATION_CLOSE_DELAY_INFINITE = 15000L
+
+        fun isTranslationCloseDelayInfinite(delayMillis: Long): Boolean = delayMillis >= TRANSLATION_CLOSE_DELAY_INFINITE
+
         /** 메뉴바 · 번역창 · 답장 창의 기본 투명도. 화면의 첫 값도 이 값을 쓴다(코드 정리 B9 — 화면들은 1.0 으로 시작해 첫 프레임이 깜박였다). */
         const val DEFAULT_TRANSPARENCY = 0.905f
 

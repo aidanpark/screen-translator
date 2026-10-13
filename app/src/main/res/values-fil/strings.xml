@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Komposisyon ng menu bar</string>
     <string name="settings_menu_cat_translation">Pagsasalin</string>
     <string name="settings_menu_translation_transparency">Labo ng Salin</string>
-    <string name="settings_menu_translation_close_delay">Delay sa Pagsara</string>
+    <string name="settings_menu_translation_close_delay">Tagal ng Pagpapakita ng Pagsasalin</string>
     <string name="settings_menu_automated_read_aloud">Awtomatikong pagbasa ng salin</string>
     <string name="settings_menu_reply_transparency">Labo ng Sagot</string>
     <string name="settings_menu_cat_tts">Text-to-Speech</string>

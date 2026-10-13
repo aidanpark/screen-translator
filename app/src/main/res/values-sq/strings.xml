@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Përbërja e shiritit të menysë</string>
     <string name="settings_menu_cat_translation">Përkthim</string>
     <string name="settings_menu_translation_transparency">Përshkueshmëria e përkthimit</string>
-    <string name="settings_menu_translation_close_delay">Vonese mbylljeje</string>
+    <string name="settings_menu_translation_close_delay">Koha e shfaqjes së përkthimit</string>
     <string name="settings_menu_automated_read_aloud">Lexim automatik i përkthimit</string>
     <string name="settings_menu_reply_transparency">Përshkueshmëria e përgjigjes</string>
     <string name="settings_menu_cat_tts">Tekst në të folur</string>

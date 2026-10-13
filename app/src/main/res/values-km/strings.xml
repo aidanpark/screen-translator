@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">សមាសភាពរបារម៉ឺនុយ</string>
     <string name="settings_menu_cat_translation">ការបកប្រែ</string>
     <string name="settings_menu_translation_transparency">តម្លាភាពបកប្រែ</string>
-    <string name="settings_menu_translation_close_delay">ពេលយឺតបិទ</string>
+    <string name="settings_menu_translation_close_delay">រយៈពេលបង្ហាញការបកប្រែ</string>
     <string name="settings_menu_automated_read_aloud">អានការបកប្រែស្វ័យប្រវត្តិ</string>
     <string name="settings_menu_reply_transparency">តម្លាភាពចម្លើយ</string>
     <string name="settings_menu_cat_tts">អត្ថបទទៅសំលេង</string>

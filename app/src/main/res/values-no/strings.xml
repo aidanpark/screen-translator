@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Menylinjens sammensetning</string>
     <string name="settings_menu_cat_translation">Oversettelse</string>
     <string name="settings_menu_translation_transparency">Gjennomsiktighet for oversettelse</string>
-    <string name="settings_menu_translation_close_delay">Lukkeforsinkelse</string>
+    <string name="settings_menu_translation_close_delay">Visningstid for oversettelse</string>
     <string name="settings_menu_automated_read_aloud">Automatisk opplesning av oversettelse</string>
     <string name="settings_menu_reply_transparency">Svar-gjennomsiktighet</string>
     <string name="settings_menu_cat_tts">Tekst til tale</string>

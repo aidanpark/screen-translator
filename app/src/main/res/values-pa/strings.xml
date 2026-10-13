@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">ਮੀਨੂ ਬਾਰ ਬਣਤਰ</string>
     <string name="settings_menu_cat_translation">ਅਨੁਵਾਦ</string>
     <string name="settings_menu_translation_transparency">ਅਨੁਵਾਦ ਪਾਰਦਰਸ਼ਤਾ</string>
-    <string name="settings_menu_translation_close_delay">ਬੰਦ ਕਰਨ ਦੀ ਦੇਰੀ</string>
+    <string name="settings_menu_translation_close_delay">ਅਨੁਵਾਦ ਦਿਖਾਉਣ ਦਾ ਸਮਾਂ</string>
     <string name="settings_menu_automated_read_aloud">ਅਨੁਵਾਦ ਦਾ ਆਟੋ ਪੜ੍ਹਨਾ</string>
     <string name="settings_menu_reply_transparency">ਜਵਾਬ ਪਾਰਦਰਸ਼ਤਾ</string>
     <string name="settings_menu_cat_tts">ਟੈਕਸਟ ਤੋਂ ਆਵਾਜ਼</string>

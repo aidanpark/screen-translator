@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Menyradens sammansättning</string>
     <string name="settings_menu_cat_translation">Översättning</string>
     <string name="settings_menu_translation_transparency">Översättningens transparens</string>
-    <string name="settings_menu_translation_close_delay">Fördröjning vid stängning</string>
+    <string name="settings_menu_translation_close_delay">Visningstid för översättning</string>
     <string name="settings_menu_automated_read_aloud">Automatisk uppläsning av översättning</string>
     <string name="settings_menu_reply_transparency">Svarstransparens</string>
     <string name="settings_menu_cat_tts">Text till tal</string>

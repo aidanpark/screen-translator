@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">מבנה שורת התפריטים</string>
   <string name="settings_menu_cat_translation">תרגום</string>
   <string name="settings_menu_translation_transparency">שקיפות תרגום</string>
-  <string name="settings_menu_translation_close_delay">עיכוב סגירה</string>
+  <string name="settings_menu_translation_close_delay">משך הצגת התרגום</string>
   <string name="settings_menu_automated_read_aloud">קריאה אוטומטית של התרגום</string>
   <string name="settings_menu_reply_transparency">שקיפות תגובה</string>
   <string name="settings_menu_cat_tts">המרת טקסט לדיבור</string>

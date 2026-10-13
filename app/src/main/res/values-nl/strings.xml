@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Menubalk-indeling</string>
     <string name="settings_menu_cat_translation">Vertaling</string>
     <string name="settings_menu_translation_transparency">Transparantie vertaling</string>
-    <string name="settings_menu_translation_close_delay">Vertraging sluiten</string>
+    <string name="settings_menu_translation_close_delay">Weergaveduur van vertaling</string>
     <string name="settings_menu_automated_read_aloud">Vertaling automatisch voorlezen</string>
     <string name="settings_menu_reply_transparency">Transparantie antwoord</string>
     <string name="settings_menu_cat_tts">Tekst-naar-spraak</string>

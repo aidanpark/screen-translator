@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">የምናሌ አሞሌ አቀማመጥ</string>
     <string name="settings_menu_cat_translation">ትርጉም</string>
     <string name="settings_menu_translation_transparency">የትርጉም ትርፍና</string>
-    <string name="settings_menu_translation_close_delay">መዝጊያ ማቆያ</string>
+    <string name="settings_menu_translation_close_delay">የትርጉም ማሳያ ጊዜ</string>
     <string name="settings_menu_automated_read_aloud">የትርጉም ራስ-ሰር ንባብ</string>
     <string name="settings_menu_reply_transparency">የምላሽ ትርፍና</string>
     <string name="settings_menu_cat_tts">ወደ-ንግግር</string>

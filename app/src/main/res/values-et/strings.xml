@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Menüüriba paigutus</string>
     <string name="settings_menu_cat_translation">Tõlge</string>
     <string name="settings_menu_translation_transparency">Tõlke läbipaistvus</string>
-    <string name="settings_menu_translation_close_delay">Sulgemise viivitus</string>
+    <string name="settings_menu_translation_close_delay">Tõlke kuvamise aeg</string>
     <string name="settings_menu_automated_read_aloud">Tõlke automaatne ettelugemine</string>
     <string name="settings_menu_reply_transparency">Vastuse läbipaistvus</string>
     <string name="settings_menu_cat_tts">Tekst kõneks</string>

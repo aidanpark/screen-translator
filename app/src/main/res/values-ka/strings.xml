@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">მენიუს ზოლის შემადგენლობა</string>
     <string name="settings_menu_cat_translation">თარგმანი</string>
     <string name="settings_menu_translation_transparency">თარგმნის გამჭვირვალობა</string>
-    <string name="settings_menu_translation_close_delay">დახურვის დაყოვნება</string>
+    <string name="settings_menu_translation_close_delay">თარგმანის ჩვენების ხანგრძლივობა</string>
     <string name="settings_menu_automated_read_aloud">თარგმანის ავტომატური წაკითხვა</string>
     <string name="settings_menu_reply_transparency">პასუხის გამჭვირვალობა</string>
     <string name="settings_menu_cat_tts">ტექსტი-სიტყვად</string>

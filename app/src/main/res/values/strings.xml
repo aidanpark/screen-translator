@@ -89,7 +89,7 @@
     <string name="label_save">Save</string>
     <string name="settings_menu_cat_translation">Translation</string>
     <string name="settings_menu_translation_transparency">Translation Transparency</string>
-    <string name="settings_menu_translation_close_delay">Translation Close Delay</string>
+    <string name="settings_menu_translation_close_delay">Translation Display Time</string>
     <string name="settings_menu_automated_read_aloud">Auto Read Translation Aloud</string>
     <string name="settings_menu_reply_transparency">Reply Window Transparency</string>
     <string name="settings_menu_cat_tts">Text-to-Speech</string>

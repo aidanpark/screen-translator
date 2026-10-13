@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">മെനു ബാർ ഘടന</string>
     <string name="settings_menu_cat_translation">ഭാഷാന്തരം</string>
     <string name="settings_menu_translation_transparency">പരിഭാഷ പാരദര്‍ശിത്വം</string>
-    <string name="settings_menu_translation_close_delay">അടയ്ക്കൽ വൈകിപ്പ്</string>
+    <string name="settings_menu_translation_close_delay">വിവർത്തനം പ്രദർശിപ്പിക്കുന്ന സമയം</string>
     <string name="settings_menu_automated_read_aloud">വിവർത്തനത്തിന്റെ സ്വയം വായന</string>
     <string name="settings_menu_reply_transparency">മറുപടി പാരദര്‍ശിത്വം</string>
     <string name="settings_menu_cat_tts">ടെക്സ്റ്റ് ടു സ്‌പീച്ച്</string>

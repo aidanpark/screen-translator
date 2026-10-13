@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Meniu juostos sudėtis</string>
     <string name="settings_menu_cat_translation">Vertimas</string>
     <string name="settings_menu_translation_transparency">Vertimo skaidrumas</string>
-    <string name="settings_menu_translation_close_delay">Uždarymo delsimas</string>
+    <string name="settings_menu_translation_close_delay">Vertimo rodymo trukmė</string>
     <string name="settings_menu_automated_read_aloud">Automatinis vertimo skaitymas</string>
     <string name="settings_menu_reply_transparency">Atsakymo skaidrumas</string>
     <string name="settings_menu_cat_tts">Tekstas į kalbą</string>

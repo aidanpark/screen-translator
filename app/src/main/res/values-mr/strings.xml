@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">मेनू बार रचना</string>
     <string name="settings_menu_cat_translation">भाषांतर</string>
     <string name="settings_menu_translation_transparency">भाषांतर पारदर्शकता</string>
-    <string name="settings_menu_translation_close_delay">बंद करण्याची विलंब</string>
+    <string name="settings_menu_translation_close_delay">भाषांतर दाखवण्याचा कालावधी</string>
     <string name="settings_menu_automated_read_aloud">अनुवादाचे स्वयंचलित वाचन</string>
     <string name="settings_menu_reply_transparency">उत्तर पारदर्शकता</string>
     <string name="settings_menu_cat_tts">मजकूर ते आवाज</string>

@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">మెను బార్ కూర్పు</string>
     <string name="settings_menu_cat_translation">అనువాదం</string>
     <string name="settings_menu_translation_transparency">అనువాదం పారదర్శకత</string>
-    <string name="settings_menu_translation_close_delay">మూసివేసే ఆలస్యం</string>
+    <string name="settings_menu_translation_close_delay">అనువాదం ప్రదర్శించే సమయం</string>
     <string name="settings_menu_automated_read_aloud">అనువాదాన్ని ఆటోమేటిక్ చదవడం</string>
     <string name="settings_menu_reply_transparency">ప్రత్యుత్తరం పారదర్శకత</string>
     <string name="settings_menu_cat_tts">పేరు నుండి వాయిస్</string>

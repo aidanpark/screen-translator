@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Ընտրացանկի գոտու դասավորություն</string>
     <string name="settings_menu_cat_translation">Թարգմանություն</string>
     <string name="settings_menu_translation_transparency">Թարգմանության թափանցիկություն</string>
-    <string name="settings_menu_translation_close_delay">Փակման հապաղում</string>
+    <string name="settings_menu_translation_close_delay">Թարգմանության ցուցադրման տևողություն</string>
     <string name="settings_menu_automated_read_aloud">Թարգմանության ինքն. ընթերցում</string>
     <string name="settings_menu_reply_transparency">Պատասխանի թափանցիկություն</string>
     <string name="settings_menu_cat_tts">Տեքստից խոսք</string>

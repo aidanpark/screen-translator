@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Usporiadanie panela s ponukami</string>
     <string name="settings_menu_cat_translation">Preklad</string>
     <string name="settings_menu_translation_transparency">Priehľadnosť prekladu</string>
-    <string name="settings_menu_translation_close_delay">Zdržanie zatvorenia</string>
+    <string name="settings_menu_translation_close_delay">Čas zobrazenia prekladu</string>
     <string name="settings_menu_automated_read_aloud">Automatické čítanie prekladu</string>
     <string name="settings_menu_reply_transparency">Priehľadnosť odpovede</string>
     <string name="settings_menu_cat_tts">Text na reč</string>

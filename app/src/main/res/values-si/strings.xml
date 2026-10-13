@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">මෙනු තීරුවේ සැකැස්ම</string>
     <string name="settings_menu_cat_translation">පරිවර්තනය</string>
     <string name="settings_menu_translation_transparency">පරිවර්තන පැහැදිලිභාවය</string>
-    <string name="settings_menu_translation_close_delay">වසීමේ විලම්බය</string>
+    <string name="settings_menu_translation_close_delay">පරිවර්තනය පෙන්වන කාලය</string>
     <string name="settings_menu_automated_read_aloud">පරිවර්තනයේ ස්වයං කියවීම</string>
     <string name="settings_menu_reply_transparency">පිළිතුරු පැහැදිලිභාවය</string>
     <string name="settings_menu_cat_tts">පෙළ-වචනය</string>

@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Menyu paneli tərtibatı</string>
     <string name="settings_menu_cat_translation">Tərcümə</string>
     <string name="settings_menu_translation_transparency">Tərcümə şəffaflığı</string>
-    <string name="settings_menu_translation_close_delay">Bağlanma gecikməsi</string>
+    <string name="settings_menu_translation_close_delay">Tərcümənin göstərilmə müddəti</string>
     <string name="settings_menu_automated_read_aloud">Tərcüməni avtomatik oxu</string>
     <string name="settings_menu_reply_transparency">Cavab şəffaflığı</string>
     <string name="settings_menu_cat_tts">Mətn səslə</string>

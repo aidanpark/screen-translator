@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Διάταξη γραμμής μενού</string>
     <string name="settings_menu_cat_translation">Μετάφραση</string>
     <string name="settings_menu_translation_transparency">Διαφάνεια μετάφρασης</string>
-    <string name="settings_menu_translation_close_delay">Καθυστέρηση κλεισίματος</string>
+    <string name="settings_menu_translation_close_delay">Διάρκεια εμφάνισης μετάφρασης</string>
     <string name="settings_menu_automated_read_aloud">Αυτόματη ανάγνωση μετάφρασης</string>
     <string name="settings_menu_reply_transparency">Διαφάνεια απάντησης</string>
     <string name="settings_menu_cat_tts">Κείμενο σε ομιλία</string>

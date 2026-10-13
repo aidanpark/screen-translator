@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Меню тилкесинин түзүлүшү</string>
     <string name="settings_menu_cat_translation">Котормо</string>
     <string name="settings_menu_translation_transparency">Котормонун ачыктыгы</string>
-    <string name="settings_menu_translation_close_delay">Жабуу кечигүүсү</string>
+    <string name="settings_menu_translation_close_delay">Котормонун көрсөтүлүү убактысы</string>
     <string name="settings_menu_automated_read_aloud">Котормону авто окуу</string>
     <string name="settings_menu_reply_transparency">Жооптун ачыктыгы</string>
     <string name="settings_menu_cat_tts">Текст үнгө</string>

@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">Układ paska menu</string>
   <string name="settings_menu_cat_translation">Tłumaczenie</string>
   <string name="settings_menu_translation_transparency">Przezroczystość tłumaczenia</string>
-  <string name="settings_menu_translation_close_delay">Opóźnienie zamknięcia</string>
+  <string name="settings_menu_translation_close_delay">Czas wyświetlania tłumaczenia</string>
   <string name="settings_menu_automated_read_aloud">Auto odczyt tłumaczenia</string>
   <string name="settings_menu_reply_transparency">Przezroczystość odpowiedzi</string>
   <string name="settings_menu_cat_tts">Tekst na mowę</string>

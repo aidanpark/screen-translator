@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">मेनु बार संरचना</string>
     <string name="settings_menu_cat_translation">अनुवाद</string>
     <string name="settings_menu_translation_transparency">अनुवाद पारदर्शिता</string>
-    <string name="settings_menu_translation_close_delay">बन्द ढिलाइ</string>
+    <string name="settings_menu_translation_close_delay">अनुवाद देखाइने समय</string>
     <string name="settings_menu_automated_read_aloud">अनुवादको स्वचालित पढाइ</string>
     <string name="settings_menu_reply_transparency">उत्तर पारदर्शिता</string>
     <string name="settings_menu_cat_tts">पाठ स्वर</string>

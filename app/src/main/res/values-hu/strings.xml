@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Menüsor összeállítása</string>
     <string name="settings_menu_cat_translation">Fordítás</string>
     <string name="settings_menu_translation_transparency">Fordítás átlátszóság</string>
-    <string name="settings_menu_translation_close_delay">Zárás késleltetése</string>
+    <string name="settings_menu_translation_close_delay">Fordítás megjelenítési ideje</string>
     <string name="settings_menu_automated_read_aloud">Fordítás automatikus felolvasása</string>
     <string name="settings_menu_reply_transparency">Válasz átlátszóság</string>
     <string name="settings_menu_cat_tts">Szövegfelolvasó</string>

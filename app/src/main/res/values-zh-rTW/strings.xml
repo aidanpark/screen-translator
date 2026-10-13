@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">選單列組成</string>
     <string name="settings_menu_cat_translation">翻譯</string>
     <string name="settings_menu_translation_transparency">翻譯透明度</string>
-    <string name="settings_menu_translation_close_delay">關閉延遲</string>
+    <string name="settings_menu_translation_close_delay">翻譯視窗顯示時間</string>
     <string name="settings_menu_automated_read_aloud">自動朗讀譯文</string>
     <string name="settings_menu_reply_transparency">回應透明度</string>
     <string name="settings_menu_cat_tts">文字轉語音</string>

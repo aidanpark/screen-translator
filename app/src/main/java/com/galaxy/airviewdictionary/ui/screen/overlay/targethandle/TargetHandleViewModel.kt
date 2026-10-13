@@ -1269,8 +1269,13 @@ class TargetHandleViewModel(
                 // DismissRunningCommand.RESUME 이라면 일정시간 후 null emit.
                 if (dismissRunningCommand == DismissRunningCommand.RESUME) {
                     val translationCloseDelay = preferenceRepository.translationCloseDelayFlow.first()
-                    delay(translationCloseDelay)
-                    flowOf(null)
+                    // 무제한이면 닫지 않는다 — 핸들을 다시 만지면(움직임 이벤트가 UP 이 아니게 되면) 아래 갈래에서 닫힌다.
+                    if (PreferenceRepository.isTranslationCloseDelayInfinite(translationCloseDelay)) {
+                        emptyFlow()
+                    } else {
+                        delay(translationCloseDelay)
+                        flowOf(null)
+                    }
                 }
                 // DismissRunningCommand.PAUSE 이라면 아무 데이타도 발행하지 않음.
                 else if (dismissRunningCommand == DismissRunningCommand.PAUSE) {

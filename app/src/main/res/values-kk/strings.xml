@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Мәзір жолағының құрамы</string>
     <string name="settings_menu_cat_translation">Аударма</string>
     <string name="settings_menu_translation_transparency">Аударма мөлдірлігі</string>
-    <string name="settings_menu_translation_close_delay">Жабу кідірісі</string>
+    <string name="settings_menu_translation_close_delay">Аударманың көрсетілу уақыты</string>
     <string name="settings_menu_automated_read_aloud">Аударманы авто оқу</string>
     <string name="settings_menu_reply_transparency">Жауап мөлдірлігі</string>
     <string name="settings_menu_cat_tts">Мәтін дауыспен</string>

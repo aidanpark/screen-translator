@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">မီနူးဘား ဖွဲ့စည်းပုံ</string>
     <string name="settings_menu_cat_translation">ဘာသာပြန်</string>
     <string name="settings_menu_translation_transparency">ဘာသာပြန် အထင်ကြည်မှု</string>
-    <string name="settings_menu_translation_close_delay">ပိတ်ချိန်နောက်ကျမှု</string>
+    <string name="settings_menu_translation_close_delay">ဘာသာပြန်ချက် ပြသချိန်</string>
     <string name="settings_menu_automated_read_aloud">ဘာသာပြန်ကို အလိုအလျောက်ဖတ်</string>
     <string name="settings_menu_reply_transparency">ပြန်ကြားမှု အထင်ကြည်မှု</string>
     <string name="settings_menu_cat_tts">စာလုံးသံပြောင်း</string>

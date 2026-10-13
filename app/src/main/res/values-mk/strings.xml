@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">Состав на лентата со менија</string>
   <string name="settings_menu_cat_translation">Превод</string>
   <string name="settings_menu_translation_transparency">Прозирност на преводот</string>
-  <string name="settings_menu_translation_close_delay">Кашнење при затворање</string>
+  <string name="settings_menu_translation_close_delay">Времетраење на прикажување на преводот</string>
   <string name="settings_menu_automated_read_aloud">Авто читање на преводот</string>
   <string name="settings_menu_reply_transparency">Прозирност на одговорот</string>
   <string name="settings_menu_cat_tts">Текст во говор</string>

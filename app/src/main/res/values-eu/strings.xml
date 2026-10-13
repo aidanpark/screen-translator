@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Menu-barraren osaera</string>
     <string name="settings_menu_cat_translation">Itzulpena</string>
     <string name="settings_menu_translation_transparency">Itzulpenaren gardentasuna</string>
-    <string name="settings_menu_translation_close_delay">Itxiera atzerapena</string>
+    <string name="settings_menu_translation_close_delay">Itzulpenaren erakusketa-denbora</string>
     <string name="settings_menu_automated_read_aloud">Itzulpenaren irakurketa automatikoa</string>
     <string name="settings_menu_reply_transparency">Erantzunaren gardentasuna</string>
     <string name="settings_menu_cat_tts">Testua ahots bihurtu</string>

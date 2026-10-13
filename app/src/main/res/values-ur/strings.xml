@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">مینو بار کی ترتیب</string>
     <string name="settings_menu_cat_translation">ترجمہ</string>
     <string name="settings_menu_translation_transparency">ترجمہ کی شفافیت</string>
-    <string name="settings_menu_translation_close_delay">بند کرنے کی تاخیر</string>
+    <string name="settings_menu_translation_close_delay">ترجمہ دکھانے کا وقت</string>
     <string name="settings_menu_automated_read_aloud">ترجمے کی خودکار پڑھائی</string>
     <string name="settings_menu_reply_transparency">جواب کی شفافیت</string>
     <string name="settings_menu_cat_tts">متن سے آواز</string>

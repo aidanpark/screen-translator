@@ -49,7 +49,7 @@
   <string name="settings_menu_menubar_composition">تكوين شريط القائمة</string>
   <string name="settings_menu_cat_translation">الترجمة</string>
   <string name="settings_menu_translation_transparency">شفافية الترجمة</string>
-  <string name="settings_menu_translation_close_delay">تأخير الإغلاق</string>
+  <string name="settings_menu_translation_close_delay">مدة عرض الترجمة</string>
   <string name="settings_menu_automated_read_aloud">قراءة تلقائية للترجمة</string>
   <string name="settings_menu_reply_transparency">شفافية الرد</string>
   <string name="settings_menu_cat_tts">تحويل النص</string>

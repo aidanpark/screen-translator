@@ -49,7 +49,7 @@
     <string name="settings_menu_menubar_composition">Kieslysbalk-uitleg</string>
     <string name="settings_menu_cat_translation">Vertaling</string>
     <string name="settings_menu_translation_transparency">Vertaalvenster</string>
-    <string name="settings_menu_translation_close_delay">Sluitvertraging</string>
+    <string name="settings_menu_translation_close_delay">Vertoontyd van vertaling</string>
     <string name="settings_menu_automated_read_aloud">Lees vertaling outomaties</string>
     <string name="settings_menu_reply_transparency">Antwoorddeursigtigheid</string>
     <string name="settings_menu_cat_tts">Teks-na-spraak</string>
