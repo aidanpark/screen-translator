@@ -7,8 +7,7 @@
 <p align="center">
   <a href="https://youtu.be/k68pj7epxiU">
     <img src="https://img.youtube.com/vi/k68pj7epxiU/maxresdefault.jpg" width="640" alt="Watch the Screen Translate demo on YouTube"/>
-  </a><br>
-  <sub>▶ Watch the 35-second demo on YouTube</sub>
+  </a>
 </p>
 
 <p align="center">
