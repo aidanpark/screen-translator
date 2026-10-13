@@ -6,7 +6,7 @@
 
 <p align="center">
   <a href="https://youtu.be/k68pj7epxiU">
-    <img src="https://img.youtube.com/vi/k68pj7epxiU/maxresdefault.jpg" width="640" alt="Watch the Screen Translate demo on YouTube"/>
+    <img src=".images/demo_preview.gif" width="640" alt="Screen Translate demo — click to watch the full video on YouTube"/>
   </a>
 </p>
 
