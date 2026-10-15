@@ -1,5 +1,8 @@
 package com.galaxy.airviewdictionary.ui.screen.ads
 
+import com.galaxy.airviewdictionary.ui.common.ReviewPrompter
+import com.galaxy.airviewdictionary.data.local.secure.SecureRepository
+import com.galaxy.airviewdictionary.data.remote.firebase.AnalyticsRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
@@ -93,7 +96,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * 보상 규칙:
  * - 끝까지 시청(onUserEarnedReward): 앱 종료 시까지 광고 없이 사용
  * - 로드 실패 / 표시 실패 / 동의 미확보 (기술적 사유): 5분 사용권 부여 후 종료
- * - 스킵(중간에 닫기·뒤로가기·홈키 중단): 짧은 쿨다운(Remote Config `skip_cooldown_seconds`, 기본 60초) 뒤 다음 번역 시 게이트가 다시 뜬다
+ * - 스킵(중간에 닫기·뒤로가기·홈키 중단): 짧은 쿨다운(Remote Config `ad_skip_cooldown_seconds`, 기본 60초) 뒤 다음 번역 시 게이트가 다시 뜬다
  */
 @AndroidEntryPoint
 class AdGateActivity : ComponentActivity() {
@@ -103,6 +106,12 @@ class AdGateActivity : ComponentActivity() {
 
     @Inject
     lateinit var remoteConfigRepository: RemoteConfigRepository
+
+    @Inject
+    lateinit var secureRepository: SecureRepository
+
+    @Inject
+    lateinit var analyticsRepository: AnalyticsRepository
 
 
     private val TAG = javaClass.simpleName
@@ -198,13 +207,31 @@ class AdGateActivity : ComponentActivity() {
                 return
             }
             Timber.tag(activity.TAG).i("App backgrounded before ad; finishing gate as skip")
-            activity.runOnUiThread { activity.finishAsSkip() }
+            activity.runOnUiThread { activity.finishAsSkip(SKIP_HOME) }
         }
 
         private val isMobileAdsInitializeCalled = AtomicBoolean(false)
 
         /** 광고 로드 대기 한계. 초과 시 로드 실패로 확정한다 */
         private const val LOAD_TIMEOUT_MILLIS = 15_000L
+
+        /** 통계의 스킵 사유 — 팝업을 닫은 경로. */
+        private const val SKIP_BACK = "back"
+        private const val SKIP_HOME = "home"
+        private const val SKIP_AD_CLOSED = "ad_closed"
+        private const val SKIP_NO_AD = "no_ad"
+        private const val SKIP_SAFETY_NET = "safety_net"
+
+        /** 통계의 실패 사유 — 광고를 불러오지 못했거나 표시하지 못한 원인. */
+        private const val FAIL_LOAD = "load"
+        private const val FAIL_SHOW = "show"
+        private const val FAIL_TIMEOUT = "timeout"
+        private const val FAIL_CONSENT = "consent"
+        private const val FAIL_NO_FILL_OR_ERROR = "error"
+
+        /** 통계의 광고 준비 사유. */
+        private const val READY_LOADED = "loaded"
+        private const val READY_CACHED = "cached"
 
         /** 인앱 리뷰를 청하기 시작하는 게이트 순번(누적). */
         private const val REVIEW_FROM_GATE_COUNT = 2
@@ -268,6 +295,7 @@ class AdGateActivity : ComponentActivity() {
         // 값은 필드에 들고 있지 않는다 — 재생성되면 필드는 0 으로 돌아간다. 리뷰를 정할 때 저장소에서 다시 읽는다.
         if (savedInstanceState == null) {
             lifecycleScope.launch { preferenceRepository.incrementAdGateOpenCount() }
+            analyticsRepository.adGateReport(AnalyticsRepository.AdGateStage.OPEN)
         }
 
         // 뒤 화면 전체를 어둡게 덮는다 (SplashActivity 와 동일한 검증된 패턴: 윈도우 레벨 dim)
@@ -282,7 +310,7 @@ class AdGateActivity : ComponentActivity() {
 
         // 뒤로가기로 다이얼로그를 닫는 것은 광고 스킵과 동일 취급 (스킵 쿨다운 적용)
         onBackPressedDispatcher.addCallback(this) {
-            finishAsSkip()
+            finishAsSkip(SKIP_BACK)
         }
 
         setContent {
@@ -369,7 +397,7 @@ class AdGateActivity : ComponentActivity() {
                             onClick = {
                                 when (adLoadStateFlow.value) {
                                     AdLoadState.Loaded -> showRewardedVideo()
-                                    AdLoadState.Failed -> finishAsFailure()
+                                    AdLoadState.Failed -> finishAsFailure(FAIL_LOAD)
                                     AdLoadState.Loading -> Unit // disabled 상태라 도달하지 않음
                                 }
                             },
@@ -394,7 +422,7 @@ class AdGateActivity : ComponentActivity() {
                 Timber.tag(TAG).w("Ad load timeout -> Failed")
                 adLoadStateFlow.value = AdLoadState.Failed
                 // 타임아웃도 "이 기기에서 광고가 안 나온다"는 신호다 (이란처럼 요청이 나가지 않는 경우)
-                recordAdLoadFailure()
+                recordAdLoadFailure(FAIL_TIMEOUT)
             }
         }
 
@@ -407,6 +435,7 @@ class AdGateActivity : ComponentActivity() {
                 initializeMobileAdsSdk()
             } else {
                 // 동의 미확보 → 로드 실패로 확정
+                analyticsRepository.adGateReport(AnalyticsRepository.AdGateStage.LOAD_FAIL, reason = FAIL_CONSENT)
                 adLoadStateFlow.value = AdLoadState.Failed
             }
         }
@@ -440,7 +469,7 @@ class AdGateActivity : ComponentActivity() {
                 delay(1000) // 정상 콜백이 먼저 처리될 시간
                 if (adShown && !finished && !requestingReview) {
                     Timber.tag(TAG).w("Ad closed but no dismiss callback; finishing as skip (safety net)")
-                    finishAsSkip()
+                    finishAsSkip(SKIP_SAFETY_NET)
                 }
             }
         }
@@ -492,6 +521,7 @@ class AdGateActivity : ComponentActivity() {
             Timber.tag(TAG).i("loadRewardedAd: 캐시된 광고 재사용")
             rewardedAd = cached
             timeoutJob?.cancel()
+            analyticsRepository.adGateReport(AnalyticsRepository.AdGateStage.READY, reason = READY_CACHED)
             adLoadStateFlow.value = AdLoadState.Loaded
             return
         }
@@ -517,7 +547,7 @@ class AdGateActivity : ComponentActivity() {
                     Timber.tag(TAG).d("onAdFailedToLoad: ${adError.message}")
                     isRewardedAdLoading = false
                     rewardedAd = null
-                    recordAdLoadFailure()
+                    recordAdLoadFailure(FAIL_NO_FILL_OR_ERROR)
                     // 로드 실패 확정 → 확인 버튼 활성화 (누르면 기술적 실패로 종료 — 5분 사용권)
                     adLoadStateFlow.value = AdLoadState.Failed
                 }
@@ -529,6 +559,7 @@ class AdGateActivity : ComponentActivity() {
                     // 표시하기 전까지 보관 → 스킵으로 게이트가 닫혀도 다음 번에 재사용한다.
                     RewardedAdCache.put(ad)
                     recordAdLoadSuccess()
+                    analyticsRepository.adGateReport(AnalyticsRepository.AdGateStage.READY, reason = READY_LOADED)
                     timeoutJob?.cancel()
                     // 로드 성공 확정 → 확인 버튼 활성화 (누르면 광고 표시)
                     adLoadStateFlow.value = AdLoadState.Loaded
@@ -541,9 +572,14 @@ class AdGateActivity : ComponentActivity() {
      * 광고 로드 실패를 기록한다. 연속 실패가 임계치에 닿으면 일정 시간 게이트를 열지 않는다.
      * 광고가 제공되지 않는 지역(러시아·이란 등)에서 수익 없이 경험만 깎는 것을 막는다.
      */
-    private fun recordAdLoadFailure() {
+    private fun recordAdLoadFailure(reason: String) {
         if (loadFailureRecorded) return
         loadFailureRecorded = true
+        analyticsRepository.adGateReport(
+            AnalyticsRepository.AdGateStage.LOAD_FAIL,
+            reason = reason,
+            failureStreak = AdGateState.failureStreak + 1,
+        )
         val policy = remoteConfigRepository.getAdGatePolicy()
         if (!policy.isBackoffEnabled) return
 
@@ -554,6 +590,7 @@ class AdGateActivity : ComponentActivity() {
             AdGateState.failureStreak,
         )
         if (suppressedUntil != null) {
+            analyticsRepository.adGateReport(AnalyticsRepository.AdGateStage.SUPPRESSED, freeMinutes = policy.backoffHours * 60)
             preferenceRepository.update(
                 PreferenceRepository.AD_GATE_SUPPRESSED_UNTIL,
                 suppressedUntil,
@@ -578,7 +615,7 @@ class AdGateActivity : ComponentActivity() {
 
         val ad = rewardedAd
         if (ad == null) {
-            finishAsSkip()
+            finishAsSkip(SKIP_NO_AD)
             return
         }
 
@@ -591,7 +628,7 @@ class AdGateActivity : ComponentActivity() {
                     requestReviewIfDueThenFinish()
                 } else {
                     // 끝까지 보지 않고 닫음(홈키 중단 포함)은 스킵과 동일 취급.
-                    finishAsSkip()
+                    finishAsSkip(SKIP_AD_CLOSED)
                 }
             }
 
@@ -600,12 +637,13 @@ class AdGateActivity : ComponentActivity() {
                 rewardedAd = null
                 // 표시에 실패한 광고를 캐시에 두면 다음 게이트에서도 같은 실패를 반복한다.
                 RewardedAdCache.clear()
-                finishAsFailure()
+                finishAsFailure(FAIL_SHOW)
             }
 
             override fun onAdShowedFullScreenContent() {
                 Timber.tag(TAG).d("Ad showed fullscreen content.")
                 adShown = true
+                analyticsRepository.adGateReport(AnalyticsRepository.AdGateStage.SHOWN)
                 // 한 번 표시한 광고는 다시 보여줄 수 없다.
                 RewardedAdCache.clear()
             }
@@ -615,7 +653,9 @@ class AdGateActivity : ComponentActivity() {
         ad.show(this) {
             // 끝까지 시청 → 이번 세션 동안 광고 없이 사용
             rewardEarned = true
-            AdGateState.grantAdFreeSession()
+            val policy = remoteConfigRepository.getAdGatePolicy()
+            AdGateState.grantAdFreeSession(policy.adFreeMillis)
+            analyticsRepository.adGateReport(AnalyticsRepository.AdGateStage.REWARD, freeMinutes = policy.adFreeMinutes)
             Timber.tag(TAG).i("User earned the reward -> ad-free session")
         }
     }
@@ -624,15 +664,17 @@ class AdGateActivity : ComponentActivity() {
      * 사용자 스킵 취급: 쿨다운만큼 유예를 주고 종료 → 그 뒤 번역부터 게이트가 다시 뜬다.
      * 쿨다운 길이는 Remote Config 에서 온다 ([AdGatePolicy.skipCooldownSeconds]).
      */
-    private fun finishAsSkip() {
+    private fun finishAsSkip(reason: String) {
         if (finished) return
+        analyticsRepository.adGateReport(AnalyticsRepository.AdGateStage.SKIP, reason = reason)
         AdGateState.grantSkipWindow(remoteConfigRepository.getAdGatePolicy().skipCooldownMillis)
         finishGate()
     }
 
     /** 기술적 실패(로드/표시/동의) 취급: 5분 사용권 부여 후 종료 */
-    private fun finishAsFailure() {
+    private fun finishAsFailure(reason: String) {
         if (finished) return
+        analyticsRepository.adGateReport(AnalyticsRepository.AdGateStage.FAIL_OK, reason = reason)
         AdGateState.grantFailureWindow()
         finishGate()
     }
@@ -661,9 +703,10 @@ class AdGateActivity : ComponentActivity() {
         }
     }
 
+    /** 게이트가 두 번 이상 열렸고, 사용량과 마지막 요청 후 간격이 [ReviewPromptPolicy] 를 만족할 때. */
     private suspend fun isReviewDue(): Boolean =
         preferenceRepository.adGateOpenCountFlow.first() >= REVIEW_FROM_GATE_COUNT &&
-                !preferenceRepository.isReviewDoneFlow.first()
+                ReviewPrompter.isDue(preferenceRepository, secureRepository)
 
     /** 리뷰 창을 청해 띄우고, 사용자가 닫을 때까지 기다린다. 띄울 수 없으면 그냥 돌아온다. */
     private suspend fun requestAndLaunchReview() {
@@ -685,7 +728,7 @@ class AdGateActivity : ComponentActivity() {
                 return
             }
             // 실제로 띄울 때만 기록한다. 건너뛴 경우는 다음 게이트에서 다시 청한다.
-            preferenceRepository.update(PreferenceRepository.IS_REVIEW_DONE, true)
+            ReviewPrompter.markPrompted(preferenceRepository)
             reviewLaunched = true
             // 띄운 뒤에는 사용자가 닫을 때까지 기다린다. 끝나지 않을 때는 onResume 안전망과
             // finishIfAppBackgrounded 가 게이트를 닫는다.

@@ -7,6 +7,7 @@ import androidx.annotation.VisibleForTesting
  *
  * 정책:
  *  - 리워드 광고를 끝까지 시청하면 [adFreeSession] = true → 앱 종료까지 광고 없이 사용.
+ *    Remote Config 의 `ad_free_minutes` 가 0 보다 크면 그 시간 동안만 면제하고, 만료되면 다시 광고를 본다.
  *  - 광고 로드/표시 실패(오프라인, no-fill 등 기술적 사유)면 5분 사용권 부여 → 만료되면 다시 광고.
  *    (유예가 없으면 오프라인 사용자는 앱을 쓸 수 없다)
  *  - 광고 로드가 연속으로 실패하면([AdGatePolicy]) 한동안 게이트를 아예 열지 않는다.
@@ -26,6 +27,10 @@ object AdGateState {
     var adFreeSession: Boolean = false
         private set
 
+    /** 광고 완주로 부여된 기한 있는 면제의 만료 시각(epoch millis). 만료 없는 면제는 [adFreeSession] 이다. */
+    @Volatile
+    private var adFreeUntilMillis: Long = 0L
+
     /** 로드/표시 실패로 부여된 임시 사용권 만료 시각(epoch millis). */
     @Volatile
     private var usableUntilMillis: Long = 0L
@@ -43,9 +48,16 @@ object AdGateState {
     var failureStreak: Int = 0
         private set
 
-    /** 광고를 끝까지 시청함 → 세션 내내 광고 없음. */
-    fun grantAdFreeSession() {
-        adFreeSession = true
+    /**
+     * 광고를 끝까지 시청함 → 면제. [durationMillis] 가 0 이하면 세션 내내(프로세스가 끝날 때까지), 양수면 그 시간 동안이다.
+     * 이미 만료 없는 면제를 받았으면 기한 있는 면제로 바꾸지 않는다.
+     */
+    fun grantAdFreeSession(durationMillis: Long = 0L) {
+        if (durationMillis <= 0L) {
+            adFreeSession = true
+            return
+        }
+        adFreeUntilMillis = maxOf(adFreeUntilMillis, System.currentTimeMillis() + durationMillis)
     }
 
     /** 광고 로드/표시 실패(기술적 사유) → 5분 임시 사용권 부여. */
@@ -107,13 +119,14 @@ object AdGateState {
     /** 지금 광고 없이 사용 가능한지. */
     fun isUsable(): Boolean {
         val now = System.currentTimeMillis()
-        return adFreeSession || now < usableUntilMillis || now < suppressedUntilMillis
+        return adFreeSession || now < adFreeUntilMillis || now < usableUntilMillis || now < suppressedUntilMillis
     }
 
     /** 테스트 전용: 세션 상태를 초기화한다(프로세스 전역 object 라 테스트 간 오염을 막는다). */
     @VisibleForTesting
     fun resetForTest() {
         adFreeSession = false
+        adFreeUntilMillis = 0L
         usableUntilMillis = 0L
         suppressedUntilMillis = 0L
         failureStreak = 0
@@ -121,5 +134,6 @@ object AdGateState {
 
     /** 부여된 임시 사용권 잔여 밀리초(없으면 0). */
     fun remainingWindowMillis(): Long =
-        if (adFreeSession) Long.MAX_VALUE else (usableUntilMillis - System.currentTimeMillis()).coerceAtLeast(0L)
+        if (adFreeSession) Long.MAX_VALUE
+        else (maxOf(usableUntilMillis, adFreeUntilMillis) - System.currentTimeMillis()).coerceAtLeast(0L)
 }

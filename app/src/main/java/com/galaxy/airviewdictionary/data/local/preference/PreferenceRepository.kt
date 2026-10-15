@@ -134,6 +134,9 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
 
         // 광고 게이트가 열린 횟수(누적). 두 번째 게이트부터 인앱 리뷰를 청한다([AdGateActivity]).
         val AD_GATE_OPEN_COUNT = intPreferencesKey("ad_gate_open_count")
+
+        // 인앱 리뷰를 마지막으로 청한 시각(epoch millis). 0 이면 청한 적이 없다. [com.galaxy.airviewdictionary.ui.common.ReviewPromptPolicy]
+        val LAST_REVIEW_PROMPT_AT = longPreferencesKey("last_review_prompt_at")
     }
 
     private val preferenceDataStore: DataStore<Preferences> = context.preferenceDataStore
@@ -175,6 +178,10 @@ class PreferenceRepository @Inject constructor(@ApplicationContext val context: 
 
     val isReviewDoneFlow: Flow<Boolean> = preferenceFlow.map { preferences ->
         preferences[IS_REVIEW_DONE] ?: false
+    }
+
+    val lastReviewPromptAtFlow: Flow<Long> = preferenceFlow.map { preferences ->
+        preferences[LAST_REVIEW_PROMPT_AT] ?: 0L
     }
 
     val isSayHereRShownFlow: Flow<Boolean> = preferenceFlow.map { preferences ->

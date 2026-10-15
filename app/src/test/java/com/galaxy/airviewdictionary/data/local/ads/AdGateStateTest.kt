@@ -183,16 +183,19 @@ class AdGateStateTest {
 
     @Test
     fun `억제 기능이 꺼진 설정을 구분한다`() {
-        assertFalse(AdGatePolicy.FALLBACK.isBackoffEnabled)
         assertFalse(policy.copy(backoffHours = 0).isBackoffEnabled)
         assertFalse(policy.copy(failureThreshold = 0).isBackoffEnabled)
         assertTrue(policy.isBackoffEnabled)
     }
 
     @Test
-    fun `설정이 깨져도 스킵 쿨다운은 남는다`() {
-        // Remote Config 파싱에 실패해도 즉시 재게이트로 돌아가면 안 된다.
-        assertEquals(60 * 1_000L, AdGatePolicy.FALLBACK.skipCooldownMillis)
+    fun `앱 기본값은 억제 3회 24시간 스킵 60초 면제 만료 없음이다`() {
+        val default = AdGatePolicy.DEFAULT
+        assertEquals(3, default.failureThreshold)
+        assertEquals(24, default.backoffHours)
+        assertEquals(60 * 1_000L, default.skipCooldownMillis)
+        assertEquals(0, default.adFreeMinutes)
+        assertTrue(default.isBackoffEnabled)
     }
 
     // ---- 완주 ----
@@ -213,5 +216,51 @@ class AdGateStateTest {
 
         assertTrue(AdGateState.isUsable())
         assertEquals(Long.MAX_VALUE, AdGateState.remainingWindowMillis())
+    }
+
+    // ---- 기한 있는 면제(Remote Config ad_free_minutes) ----
+
+    @Test
+    fun `면제 시간이 0이면 만료 없이 면제된다`() {
+        AdGateState.grantAdFreeSession(AdGatePolicy.DEFAULT.adFreeMillis)
+
+        assertTrue(AdGateState.adFreeSession)
+        assertEquals(0L, AdGatePolicy.DEFAULT.adFreeMinutes.toLong())
+        assertEquals(Long.MAX_VALUE, AdGateState.remainingWindowMillis())
+    }
+
+    @Test
+    fun `면제 시간이 있으면 그 시간 동안만 사용 가능하다`() {
+        val sixtyMinutes = policy.copy(adFreeMinutes = 60)
+        AdGateState.grantAdFreeSession(sixtyMinutes.adFreeMillis)
+
+        assertFalse("기한 있는 면제는 세션 면제가 아니다", AdGateState.adFreeSession)
+        assertTrue(AdGateState.isUsable())
+        val remaining = AdGateState.remainingWindowMillis()
+        assertTrue(
+            "잔여 $remaining ms 가 60분 근처여야 한다",
+            remaining in (60 * 60_000L - toleranceMillis)..(60 * 60_000L)
+        )
+    }
+
+    @Test
+    fun `기한 있는 면제는 만료되면 다시 광고를 본다`() {
+        AdGateState.grantAdFreeSession(durationMillis = 1L)
+        Thread.sleep(20)
+
+        assertFalse(AdGateState.isUsable())
+    }
+
+    @Test
+    fun `기한 있는 면제는 뒤이은 스킵으로 짧아지지 않는다`() {
+        AdGateState.grantAdFreeSession(policy.copy(adFreeMinutes = 60).adFreeMillis)
+        AdGateState.grantSkipWindow(policy.skipCooldownMillis)
+
+        assertTrue(AdGateState.remainingWindowMillis() > 59 * 60_000L)
+    }
+
+    @Test
+    fun `음수 면제 시간은 만료 없음으로 읽는다`() {
+        assertEquals(0L, policy.copy(adFreeMinutes = -5).adFreeMillis)
     }
 }

@@ -84,6 +84,14 @@
             android:theme="@style/Theme.ScreenTranslator.Transparent" />
 
         <activity
+            android:name=".ui.screen.ads.ReviewActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/Theme.ScreenTranslator.Transparent" />
+
+        <activity
             android:name=".ui.screen.main.SettingsActivity"
             android:exported="false"
             android:launchMode="singleTop"

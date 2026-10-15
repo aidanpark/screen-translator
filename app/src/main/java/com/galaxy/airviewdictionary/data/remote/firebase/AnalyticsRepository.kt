@@ -18,6 +18,7 @@ object Event {
     const val SECURE = "secure"
     const val TRANSLATE = "translate"
     const val TIME_TAKEN = "time_taken"
+    const val AD_GATE = "ad_gate"
 }
 
 object Param {
@@ -39,6 +40,12 @@ object Param {
     const val AUTOMATIC_TRANSLATION_PLAYBACK = "autoTTS"
     const val TTS_VOICE = "TTSVoice"
     const val TTS_SPEECH_RATE = "TTSRate"
+
+    /** 광고 안내 팝업의 단계(`AdGateStage`)와 그 사유. */
+    const val AD_STAGE = "stage"
+    const val AD_REASON = "reason"
+    const val AD_FREE_MINUTES = "free_min"
+    const val AD_FAILURE_STREAK = "streak"
 
     const val INSTALL_COUNT = "install_count"
     const val TRIAL_COUNT = "trial_count"
@@ -134,6 +141,21 @@ class AnalyticsRepository @Inject constructor(@ApplicationContext val context: C
         }
     }
 
+    /**
+     * 광고 안내 팝업의 흐름 한 단계를 보고한다 — 열림 · 광고 준비 · 시청 시작 · 완주 · 스킵 · 실패. 열림 대비 완주 비율이
+     * 광고 수익의 상한이다. [reason] 은 단계 안의 구분(스킵을 닫은 경로, 실패의 원인)이다.
+     */
+    fun adGateReport(stage: String, reason: String? = null, freeMinutes: Int? = null, failureStreak: Int? = null) {
+        if (BuildConfig.DEBUG) return
+
+        firebaseAnalytics.logEvent(Event.AD_GATE) {
+            param(Param.AD_STAGE, stage)
+            reason?.let { param(Param.AD_REASON, it) }
+            freeMinutes?.let { param(Param.AD_FREE_MINUTES, it.toLong()) }
+            failureStreak?.let { param(Param.AD_FAILURE_STREAK, it.toLong()) }
+        }
+    }
+
     fun hoursTakenReport(trialCount: Int, hour: Int) {
         if (BuildConfig.DEBUG) return
 
@@ -148,6 +170,18 @@ class AnalyticsRepository @Inject constructor(@ApplicationContext val context: C
         firebaseAnalytics.logEvent(Event.TIME_TAKEN) {
             param("${Param.DAYS_TAKEN}$trialCount", day.toLong())
         }
+    }
+
+    /** [adGateReport] 의 단계 값. */
+    object AdGateStage {
+        const val OPEN = "open"
+        const val READY = "ready"
+        const val SHOWN = "shown"
+        const val REWARD = "reward"
+        const val SKIP = "skip"
+        const val LOAD_FAIL = "load_fail"
+        const val FAIL_OK = "fail_ok"
+        const val SUPPRESSED = "suppressed"
     }
 
     companion object {

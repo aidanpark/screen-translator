@@ -1,6 +1,8 @@
 package com.galaxy.airviewdictionary.ui.screen.main
 
 
+import androidx.lifecycle.Lifecycle
+import com.galaxy.airviewdictionary.ui.common.ReviewPrompter
 import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.content.ClipboardManager
@@ -333,6 +335,17 @@ class SettingsActivity : AVDActivity() {
         super.onNewIntent(intent)
     }
 
+    /**
+     * 설정 화면을 연 사용자는 앱을 쓰는 중이고 방해받을 일이 없다 — 이때 인앱 리뷰를 청한다. 번역 중에는 다른 앱 위라 띄우지 않는다.
+     * 규칙은 [ReviewPromptPolicy], 실제로 띄울지는 Play 가 정한다. 권한 요청 등 다른 창이 앞에 있으면 그만둔다.
+     */
+    private suspend fun requestReviewIfDue() {
+        if (!ReviewPrompter.isDue(viewModel.preferenceRepository, viewModel.secureRepository)) return
+        delay(1500)
+        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return
+        ReviewPrompter.requestAndLaunch(this, viewModel.preferenceRepository)
+    }
+
     override fun onResume() {
         super.onResume()
 
@@ -366,6 +379,8 @@ class SettingsActivity : AVDActivity() {
                     val intent = Intent(this@SettingsActivity, ScreenCapturePermissionRequesterActivity::class.java)
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     startActivity(intent)
+                } else {
+                    requestReviewIfDue()
                 }
             }
         }

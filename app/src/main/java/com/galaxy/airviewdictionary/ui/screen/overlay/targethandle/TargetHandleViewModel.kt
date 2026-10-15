@@ -59,7 +59,10 @@ import com.galaxy.airviewdictionary.extensions.voiceNameMatchesLanguage
 import com.galaxy.airviewdictionary.extensions.gotoStore
 import com.galaxy.airviewdictionary.extensions.openGoogleApp
 import com.galaxy.airviewdictionary.extensions.toPx
+import com.galaxy.airviewdictionary.ui.common.ReviewPromptPolicy
+import com.galaxy.airviewdictionary.ui.common.ReviewPrompter
 import com.galaxy.airviewdictionary.ui.screen.ads.AdGateActivity
+import com.galaxy.airviewdictionary.ui.screen.ads.ReviewActivity
 import com.galaxy.airviewdictionary.ui.screen.main.SettingsActivity
 import com.galaxy.airviewdictionary.ui.screen.overlay.dialog.DialogView
 import com.galaxy.airviewdictionary.ui.screen.overlay.menubar.MenuBarView
@@ -985,6 +988,7 @@ class TargetHandleViewModel(
                                             translateStatusFlow.value = TranslateStatus.Translated
                                             // 표시 아래에 글이 없다는 답 — 빈 자리에 머문 것과 같이 조용히 끝낸다
                                             if (it.t is NoTextInImageException) return@also
+                                            consecutiveSuccesses = 0
                                             // 새 제스처가 이미 시작됐다면 낡은 실패 안내는 버린다.
                                             // (다음 제스처 위·캡처 프레임에 이전 안내가 찍히는 것 방지)
                                             if (requestEpoch != captureEpoch) {
@@ -1439,6 +1443,32 @@ class TargetHandleViewModel(
             )
         }
 
+        /**
+         * 아하 시점의 리뷰 요청: 포인터 번역이 오류 없이 [ReviewPromptPolicy.MIN_CONSECUTIVE_SUCCESSES] 번 이어서 성공하면
+         * 그 번역을 읽고 손을 뗀 순간에 인앱 리뷰를 청한다. 광고 게이트가 열릴 차례이면 그쪽이 앞선다(게이트 뒤 요청 경로가 따로 있다).
+         * 요청은 프로세스당 한 번만 시도한다 — Play 가 창을 띄우지 못하는 경우 번역마다 되풀이하지 않는다.
+         */
+        viewModelScope.launch {
+            pointerPositionedTranslationFlow
+                .filterNotNull()
+                .filter { translation -> translation.resultText != null }
+                .distinctUntilChanged { old, new -> old.sourceText == new.sourceText }
+                .collect {
+                    consecutiveSuccesses += 1
+                    if (reviewAttemptedInProcess || adGateDue()) return@collect
+                    if (!ReviewPrompter.isDue(preferenceRepository, secureRepository, consecutiveSuccesses)) return@collect
+                    motionEventFlow.first { motionEvent ->
+                        motionEvent == MotionEvent.ACTION_UP
+                                || motionEvent == MotionEvent.ACTION_CANCEL
+                                || motionEvent == MotionEvent.INVALID_POINTER_ID
+                    }
+                    // 손을 뗀 사이 설정 화면이나 게이트가 앞에 왔으면 그만둔다.
+                    if (SettingsActivity.liveStateFlow.value || AdGateActivity.liveStateFlow.value) return@collect
+                    reviewAttemptedInProcess = true
+                    ReviewActivity.start(applicationContext)
+                }
+        }
+
         // 번역 카운트 통계 (앱 리뷰 유도 및 사용량 통계용)
         viewModelScope.launch {
             pointerPositionedTranslationFlow
@@ -1474,6 +1504,11 @@ class TargetHandleViewModel(
                 }
         }
     }
+
+    /** 포인터 번역이 오류 없이 이어서 성공한 수. 번역 오류가 나면 0 으로 돌아간다. 프로세스가 끝나면 사라진다. */
+    private var consecutiveSuccesses = 0
+
+    private var reviewAttemptedInProcess = false
 
     /**
      * 광고 게이트를 열 때인가 — 사용권이 없고(광고 시청 · 5분 사용권 · 쿨다운이 아님), 설정 화면이나 게이트가 떠 있지 않다.

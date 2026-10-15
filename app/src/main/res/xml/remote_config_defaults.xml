@@ -79,29 +79,44 @@
 
 
     <!--
-        2.7.2 ~ 광고 게이트 동작 정책.
+        광고 게이트(광고 안내 팝업) 동작 정책. 네 항목 모두 정수이고 이름이 ad_ 로 시작한다.
+        2.7.2 ~ 2.8.10 은 이 넷을 ad_gate_failure_backoff JSON 한 항목으로 읽었다(이제 읽지 않는다).
 
-        failure_threshold / backoff_hours
+        ad_failure_threshold / ad_backoff_hours
             광고 로드가 연속 N회 실패하면 그 시간 동안 게이트를 열지 않는다.
             러시아는 광고 게재가 중단돼 일치율 0%, 이란은 제재로 요청 자체가 나가지 않는다.
             이런 사용자에게 게이트는 수익 없이 5분마다 창을 띄우고 최대 15초를 기다리게 할 뿐이다.
             국가 목록이 아니라 실제 로드 결과로 판단하므로 다른 지역이 막혀도 자동 대응된다.
             억제가 만료되면 다시 광고를 시도한다(영구 차단 아님). 0 이하면 기능이 꺼진다.
+    -->
+    <entry>
+        <key>ad_failure_threshold</key>
+        <value>3</value>
+    </entry>
 
-        skip_cooldown_seconds
-            사용자가 광고를 스킵한 뒤 게이트를 다시 열지 않는 시간. 0 이면 즉시 재게이트.
+    <entry>
+        <key>ad_backoff_hours</key>
+        <value>24</value>
+    </entry>
+
+    <!--
+        ad_skip_cooldown_seconds
+            사용자가 광고를 스킵한 뒤 게이트를 다시 열지 않는 시간(초). 0 이면 즉시 재게이트.
             이 값의 손익은 eCPM 이 높은 국가(일본·미국·한국)에 집중되므로,
             배포 후 노출수를 보고 앱 릴리스 없이 조정한다.
     -->
     <entry>
-        <key>ad_gate_failure_backoff</key>
-        <value>
-            {
-                "failure_threshold": 3,
-                "backoff_hours": 24,
-                "skip_cooldown_seconds": 60
-            }
-        </value>
+        <key>ad_skip_cooldown_seconds</key>
+        <value>60</value>
+    </entry>
+
+    <!--
+        ad_free_minutes
+            광고를 끝까지 본 뒤 게이트를 다시 열지 않는 시간(분). 0 이면 만료 없이 프로세스가 끝날 때까지 면제.
+    -->
+    <entry>
+        <key>ad_free_minutes</key>
+        <value>0</value>
     </entry>
 
     <!--
@@ -128,7 +143,7 @@
     <!--
         claude_image_enabled
             false 면 Claude 도 OCR 글을 번역한다 — 화면을 잘라 보내지 않는다(.docs/vision-engine-design.md §25).
-            켜져 있으면 Claude 에서 원문 언어가 auto 이거나 화면 글자를 읽을 엔진이 없는 언어(25개)일 때 이미지를 보낸다.
+            켜져 있으면 Claude 에서 원문 언어가 화면 글자를 읽을 엔진이 없는 언어(25개)일 때 이미지를 보낸다. auto 는 OCR 글을 번역한다.
             끄면 그 25개 언어는 원문으로 쓸 수 없다. 이미지 요청의 비용·지연 문제가 보이면 끈다.
     -->
     <entry>

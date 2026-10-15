@@ -38,10 +38,11 @@ class RemoteConfigRepository @Inject constructor(@ApplicationContext val context
         // 2.6.0~2.7.1 의 openai_/gemini_/claude_translate_models 세 항목을 합친 것이다.
         const val TRANSLATE_MODELS = "translate_models"
 
-        // 광고 게이트 동작 정책. JSON 한 항목으로 담는다.
-        // { "failure_threshold": 3, "backoff_hours": 24, "skip_cooldown_seconds": 60 }
-        // 자세한 의미는 [AdGatePolicy] 참조.
-        const val AD_GATE_FAILURE_BACKOFF = "ad_gate_failure_backoff"
+        // 광고 게이트(광고 안내 팝업) 동작 정책. 정수 항목 네 개이고 이름은 모두 `ad_` 로 시작한다. 자세한 의미는 [AdGatePolicy] 참조.
+        const val AD_FAILURE_THRESHOLD = "ad_failure_threshold"
+        const val AD_BACKOFF_HOURS = "ad_backoff_hours"
+        const val AD_SKIP_COOLDOWN_SECONDS = "ad_skip_cooldown_seconds"
+        const val AD_FREE_MINUTES = "ad_free_minutes"
 
         // PP-OCRv5 끄기 스위치(.docs/vision-engine-design.md §19). 둘 다 기본 켜짐 — 값을 못 받았으면 켜진 것으로 본다.
         // PADDLE_OCR_ENABLED 를 끄면 PP-OCRv5 를 아예 쓰지 않는다(지정 언어·auto 모두 ML Kit 으로).
@@ -85,31 +86,26 @@ class RemoteConfigRepository @Inject constructor(@ApplicationContext val context
     }
 
     /**
-     * 광고 게이트 정책. Remote Config 의 JSON 을 파싱한다.
-     * 값이 비었으면 [AdGatePolicy.DEFAULT], 형식이 깨졌으면 [AdGatePolicy.FALLBACK](억제 끔) 을 돌려준다.
-     * 누락된 필드는 DEFAULT 값으로 채워, 항목 일부만 설정해도 나머지는 앱 기본값대로 동작한다
-     * (코드 정리 A7 — 예전에는 FALLBACK 으로 채워 일부만 바꾸면 억제가 조용히 꺼졌다).
+     * 광고 게이트 정책. `ad_` 접두사 정수 항목 네 개를 읽는다.
+     * 값을 아직 못 받았거나(앱 기본값 XML 도 없을 때) 숫자가 아니면 그 필드만 [AdGatePolicy.DEFAULT] 값을 쓴다 — 한 항목이
+     * 잘못되어도 나머지는 그대로 동작한다.
      */
     fun getAdGatePolicy(): AdGatePolicy {
-        val raw = remoteConfig[AD_GATE_FAILURE_BACKOFF].asString()
-        if (raw.isBlank()) return AdGatePolicy.DEFAULT
-        return try {
-            val json = JSONObject(raw)
-            AdGatePolicy(
-                failureThreshold = json.optInt(
-                    "failure_threshold", AdGatePolicy.DEFAULT.failureThreshold
-                ),
-                backoffHours = json.optInt(
-                    "backoff_hours", AdGatePolicy.DEFAULT.backoffHours
-                ),
-                skipCooldownSeconds = json.optInt(
-                    "skip_cooldown_seconds", AdGatePolicy.DEFAULT.skipCooldownSeconds
-                ),
-            )
-        } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "$AD_GATE_FAILURE_BACKOFF JSON 파싱 실패: '$raw'")
-            AdGatePolicy.FALLBACK
-        }
+        val default = AdGatePolicy.DEFAULT
+        return AdGatePolicy(
+            failureThreshold = adInt(AD_FAILURE_THRESHOLD, default.failureThreshold),
+            backoffHours = adInt(AD_BACKOFF_HOURS, default.backoffHours),
+            skipCooldownSeconds = adInt(AD_SKIP_COOLDOWN_SECONDS, default.skipCooldownSeconds),
+            adFreeMinutes = adInt(AD_FREE_MINUTES, default.adFreeMinutes),
+        )
+    }
+
+    private fun adInt(key: String, default: Int): Int = try {
+        val value = remoteConfig[key]
+        if (value.source == FirebaseRemoteConfig.VALUE_SOURCE_STATIC) default else value.asLong().toInt()
+    } catch (e: Exception) {
+        Timber.tag(TAG).w(e, "$key 값을 숫자로 읽지 못했다 — 기본값 $default 를 쓴다")
+        default
     }
 
     /** 리워드 광고 단위 ID. */
